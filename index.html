@@ -40,6 +40,41 @@ limitations under the License.
   <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500|Material+Icons" rel="stylesheet" type="text/css">
   <script src="lib.js"></script>
 </head>
+
+
+<style>
+  /* let the top bar wrap to new lines */
+  #top-controls .container{
+    display:flex;            /* it's already flex in bundle.css; harmless to repeat */
+    flex-wrap:wrap;          /* <-- key change */
+    align-items:flex-end;
+    row-gap: 24px;
+  }
+
+  /* FL: put each section on its own full-width row */
+  #top-controls .fl-controls,
+  #top-controls .fl-advanced-controls{
+    flex:0 0 100%;
+    width:100%;
+  }
+
+  /* keep the checkbox as a small block; it will sit at the end of row 1
+     or start of row 2 depending on available width */
+  #top-controls .ui-fl-enabled{
+    flex:0 0 auto;
+  }
+
+  /* lay out items *within* each FL row horizontally, wrapping if narrow */
+  #top-controls .fl-controls-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px 18px;
+    align-items:flex-end;
+  }
+</style>
+
+
+
 <body>
   <!-- GitHub link -->
   <a class="github-link" href="https://github.com/tensorflow/playground" title="Source on GitHub" target="_blank">
@@ -50,9 +85,9 @@ limitations under the License.
   </a>
   <!-- Header -->
   <header>
-    <h1 class="l--page">Tinker With a <b>Neural Network</b> <span class="optional">Right Here </span>in Your Browser.<br>Don’t Worry, You Can’t Break It. We Promise.</h1>
+    <h2 class="l--page">Tinker With a <b>Neural Network</b> <span class="optional">Right Here </span>in Your Browser.</h2>
   </header>
-
+  
   <!-- Top Controls -->
   <div id="top-controls">
     <div class="container l--page">
@@ -135,6 +170,131 @@ limitations under the License.
             <option value="classification">Classification</option>
             <option value="regression">Regression</option>
           </select>
+        </div>
+      </div>
+      <div class="control ui-fl-enabled">
+        <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-enabled">
+          <input type="checkbox" id="fl-enabled" class="mdl-checkbox__input">
+          <span class="mdl-checkbox__label">Enable Federated Learning</span>
+        </label>
+      </div>
+
+      <!-- Core FL Settings Row (only show when FL is enabled) -->
+      <div class="fl-controls" style="display: none;">
+        <div class="fl-controls-row">
+          <div class="control ui-fl-algo">
+            <label for="fl-algo">Algorithm</label>
+            <div class="select">
+              <select id="fl-algo">
+                <option value="FedAvg">FedAvg</option>
+                <option value="FedProx">FedProx</option>
+                <option value="FedAdam">FedAdam</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="control ui-fl-numClients">
+            <label for="fl-numClients">Clients:&nbsp;<span class="value" id="fl-numClients-val"></span></label>
+            <p class="slider">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-numClients" min="2" max="80" step="1" value="20">
+            </p>
+          </div>
+
+          <div class="control ui-fl-clientFrac">
+            <label for="fl-clientFrac">Client frac:&nbsp;<span class="value" id="fl-clientFrac-val"></span></label>
+            <p class="slider">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-clientFrac" min="0.05" max="1" step="0.05" value="0.2">
+            </p>
+          </div>
+
+          <div class="control ui-fl-localEpochs">
+            <label for="fl-localEpochs">Local Epochs:&nbsp;<span class="value" id="fl-localEpochs-val"></span></label>
+            <p class="slider">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-localEpochs" min="1" max="10" step="1" value="1">
+            </p>
+          </div>
+
+          <div class="control ui-fl-alpha"> <!-- Dirichlet distribution -->
+            <label for="fl-alpha">Non-IID α:&nbsp;<span class="value" id="fl-alpha-val"></span></label>
+            <p class="slider">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-alpha" min="0.05" max="50" step="0.05" value="10">
+            </p>
+          </div>
+
+          <div class="control">
+            <button class="basic-button" id="fl-advanced-toggle">Advanced</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced FL Controls Row -->
+      <div class="fl-advanced-controls" style="display: none;">
+        <div class="fl-controls-row">
+          <div class="control ui-fl-batchSize">
+            <label for="fl-batchSize">Batch:&nbsp;<span class="value" id="fl-batchSize-val"></span></label>
+            <p class="slider">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-batchSize" min="1" max="64" step="1" value="16">
+            </p>
+          </div>
+
+          <div class="control ui-fl-clientLR">
+            <label for="fl-clientLR">Client LR:&nbsp;<span class="value" id="fl-clientLR-val"></span></label>
+            <p class="slider">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-clientLR" min="0.001" max="0.2" step="0.001" value="0.03">
+            </p>
+          </div>
+
+          <div class="control ui-fl-weighted">
+            <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-weighted">
+              <input type="checkbox" id="fl-weighted" class="mdl-checkbox__input" checked>
+              <span class="mdl-checkbox__label">Weight by size</span>
+            </label>
+          </div>
+
+          <div class="control ui-fl-dropout">
+            <label for="fl-dropout">Dropout:&nbsp;<span class="value" id="fl-dropout-val"></span></label>
+            <p class="slider">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-dropout" min="0" max="0.9" step="0.05" value="0">
+            </p>
+          </div>
+
+          <div class="control ui-fl-clientLevelDp">
+            <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-clientLevelDp">
+              <input type="checkbox" id="fl-clientLevelDp" class="mdl-checkbox__input">
+              <span class="mdl-checkbox__label">Diff. Privacy</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Algorithm-specific and DP controls in a second row -->
+        <div class="fl-controls-row">
+          <div id="fedprox-opts" class="control ui-fl-mu" style="display: none;">
+            <label for="fl-mu">μ:&nbsp;<span class="value" id="fl-mu-val"></span></label>
+            <p class="slider">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-mu" min="0" max="1" step="0.01" value="0.1">
+            </p>
+          </div>
+
+          <div id="fedadam-opts" class="control ui-fl-serverLR" style="display: none;">
+            <label for="fl-serverLR">Server LR:&nbsp;<span class="value" id="fl-serverLR-val"></span></label>
+            <p class="slider">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-serverLR" min="0.001" max="0.1" step="0.001" value="0.01">
+            </p>
+          </div>
+
+          <div class="control ui-fl-clip" style="display: none;">
+            <label for="fl-clip">DP clip:&nbsp;<span class="value" id="fl-clip-val"></span></label>
+            <p class="slider">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-clip" min="0" max="10" step="0.1" value="0">
+            </p>
+          </div>
+
+          <div class="control ui-fl-noise" style="display: none;">
+            <label for="fl-noise">DP σ:&nbsp;<span class="value" id="fl-noise-val"></span></label>
+            <p class="slider">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-noise" min="0" max="2" step="0.05" value="0">
+            </p>
+          </div>
         </div>
       </div>
     </div>

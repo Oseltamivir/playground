@@ -27,9 +27,21 @@ import {
 } from "./state";
 import {Example2D, shuffle} from "./dataset";
 import {AppendingLineChart} from "./linechart";
+import {makeClientsFromXY} from "./fl/partition";
+import {aggregateDeltas, addScaled, diffWeights} from "./fl/algorithms";
+import {clipUpdate, addGaussianNoise} from "./fl/dp";
+import {ServerAdam} from "./fl/optimizers";
+import {ClientData, FLConfig, Weights} from "./fl/types";
 import * as d3 from 'd3';
 
 let mainWidth;
+let flClients: ClientData[] = null;
+let flLastSeed = "";
+let flLastSig = "";
+let flServerAdam: ServerAdam = null;
+let flLastAlgo = "";
+
+
 
 // More scrolling
 d3.select(".more button").on("click", function() {
@@ -174,6 +186,55 @@ let lossTest = 0;
 let player = new Player();
 let lineChart = new AppendingLineChart(d3.select("#linechart"),
     ["#777", "black"]);
+
+function getElNum(id: string, def: number): number {
+  var el = document.getElementById(id) as HTMLInputElement;
+  if (!el) return def;
+  var v = parseFloat(el.value);
+  return isNaN(v) ? def : v;
+}
+function getElInt(id: string, def: number): number {
+  var n = getElNum(id, def);
+  return Math.round(n);
+}
+function getElChecked(id: string): boolean {
+  var el = document.getElementById(id) as HTMLInputElement;
+  return !!(el && el.checked);
+}
+function getElSel(id: string, def: string): string {
+  var el = document.getElementById(id) as HTMLSelectElement;
+  return el && el.value ? el.value : def;
+}
+function isFLEnabled(): boolean {
+  return getElChecked("fl-enabled");
+}
+
+function readFLConfig(): FLConfig {
+  const algo = getElSel("fl-algo", "FedAvg") as any;
+  const cfg: FLConfig = {
+    algo,
+    numClients: getElInt("fl-numClients", 50),
+    clientFrac: Math.max(0.05, Math.min(1, +getElNum("fl-clientFrac", 0.2))),
+    localEpochs: getElInt("fl-localEpochs", 1),
+    batchSize: getElInt("fl-batchSize", 16),
+    clientLR: getElNum("fl-clientLR", 0.03),
+    clientOptimizer: "sgd",
+    weightedAggregation: getElChecked("fl-weighted"),
+    clientDropout: Math.max(0, Math.min(0.9, +getElNum("fl-dropout", 0))),
+    iidAlpha: getElNum("fl-alpha", 10),
+    mu: getElNum("fl-mu", 0.1),
+    serverLR: getElNum("fl-serverLR", 0.01),
+    beta1: getElNum("fl-beta1", 0.9),
+    beta2: getElNum("fl-beta2", 0.999),
+    eps: getElNum("fl-eps", 1e-8),
+    dpClipNorm: getElNum("fl-clip", 0),
+    dpNoiseMult: getElNum("fl-noise", 0),
+    dpClientLevel: getElChecked("fl-clientLevelDp")
+  };
+  return cfg;
+}
+
+
 
 function makeGUI() {
   d3.select("#reset-button").on("click", () => {
@@ -362,6 +423,83 @@ function makeGUI() {
   });
   problem.property("value", getKeyFromValue(problems, state.problem));
 
+  function bindMirror(idRange: string, idSpan: string) {
+    var el = document.getElementById(idRange) as HTMLInputElement;
+    var sp = document.getElementById(idSpan) as HTMLElement;
+    if (!el || !sp) return;
+    var update = function(){ sp.textContent = el.value; };
+    el.addEventListener("input", update);
+      update();
+    }
+    bindMirror("fl-numClients", "fl-numClients-val");
+    bindMirror("fl-clientFrac", "fl-clientFrac-val");
+    bindMirror("fl-localEpochs", "fl-localEpochs-val");
+    bindMirror("fl-batchSize", "fl-batchSize-val");
+    bindMirror("fl-clientLR", "fl-clientLR-val");
+    bindMirror("fl-alpha", "fl-alpha-val");
+    bindMirror("fl-dropout", "fl-dropout-val");
+    bindMirror("fl-clip", "fl-clip-val");
+    bindMirror("fl-noise", "fl-noise-val");
+
+    // Show/hide FedAdam/FedProx options
+    var algoSel = document.getElementById("fl-algo") as HTMLSelectElement;
+    function showAlgoOpts(){
+      var v = algoSel ? algoSel.value : "FedAvg";
+      var a = document.getElementById("fedadam-opts") as HTMLElement;
+      var p = document.getElementById("fedprox-opts") as HTMLElement;
+      if (a) a.style.display = (v === "FedAdam") ? "" : "none";
+      if (p) p.style.display = (v === "FedProx") ? "" : "none";
+    }
+    if (algoSel) {
+      algoSel.addEventListener("change", function(){ flServerAdam = null; showAlgoOpts(); });
+      showAlgoOpts();
+    }
+  
+  d3.select("#fl-enabled").on("change", function() {
+    const flControls = d3.select(".fl-controls");
+    const flAdvanced = d3.select(".fl-advanced-controls");
+    
+    if (this.checked) {
+      flControls.style("display", "block");
+    } else {
+      flControls.style("display", "none");
+      flAdvanced.style("display", "none");
+    }
+    
+    parametersChanged = true;
+    userHasInteracted();
+  });
+
+  // FL Advanced Toggle Logic
+  d3.select("#fl-advanced-toggle").on("click", function() {
+    const flAdvanced = d3.select(".fl-advanced-controls");
+    const currentDisplay = flAdvanced.style("display");
+    
+    if (currentDisplay === "none" || currentDisplay === "") {
+      flAdvanced.style("display", "block");
+      d3.select(this).text("Hide Advanced");
+    } else {
+      flAdvanced.style("display", "none");
+      d3.select(this).text("Advanced");
+    }
+    
+    userHasInteracted();
+  });
+
+  // Differential Privacy Controls Toggle
+  d3.select("#fl-clientLevelDp").on("change", function() {
+    const dpControls = d3.selectAll(".ui-fl-clip, .ui-fl-noise");
+    
+    if (this.checked) {
+      dpControls.style("display", "block");
+    } else {
+      dpControls.style("display", "none");
+    }
+    
+    parametersChanged = true;
+    userHasInteracted();
+  });
+  
   // Add scale to the gradient color map.
   let x = d3.scale.linear().domain([-1, 1]).range([0, 144]);
   let xAxis = d3.svg.axis()
@@ -906,7 +1044,222 @@ function constructInput(x: number, y: number): number[] {
   return input;
 }
 
+function rebuildFLClientsIfNeeded(cfg: FLConfig): void {
+  // Rebuild when seed changes or partition knobs change.
+  var sig = state.seed + "|" + cfg.numClients + "|" + cfg.batchSize + "|" + cfg.iidAlpha + "|" + state.problem;
+  if (flClients && flLastSeed === state.seed && flLastSig === sig) return;
+
+  // Only classification is supported here (2 classes in the Playground).
+  var X: number[][] = [];
+  var Y: number[] = [];
+  for (var i = 0; i < trainData.length; i++) {
+    // We partition by raw XY (feature selection still happens at train time).
+    X.push([trainData[i].x, trainData[i].y]);
+    // Map labels {-1,1} -> {0,1}
+    Y.push(trainData[i].label > 0 ? 1 : 0);
+  }
+  flClients = makeClientsFromXY(X, Y, 2, cfg.numClients, cfg.batchSize, cfg.iidAlpha);
+  flLastSeed = state.seed;
+  flLastSig = sig;
+}
+
+function nnFlattenWeights(): Float32Array {
+  // Order: biases of non-input layers, then each link weight.
+  var arr: number[] = [];
+  for (var layerIdx = 1; layerIdx < network.length; layerIdx++) {
+    var layer = network[layerIdx];
+    for (var i = 0; i < layer.length; i++) arr.push(layer[i].bias);
+    for (var i2 = 0; i2 < layer.length; i2++) {
+      var node = layer[i2];
+      for (var j = 0; j < node.inputLinks.length; j++) arr.push(node.inputLinks[j].weight);
+    }
+  }
+  var out = new Float32Array(arr.length);
+  for (var k = 0; k < arr.length; k++) out[k] = arr[k];
+  return out;
+}
+
+function nnSetWeightsFromFlat(buf: Float32Array): void {
+  var idx = 0;
+  for (var layerIdx = 1; layerIdx < network.length; layerIdx++) {
+    var layer = network[layerIdx];
+    for (var i = 0; i < layer.length; i++) { layer[i].bias = buf[idx++]; }
+    for (var i2 = 0; i2 < layer.length; i2++) {
+      var node = layer[i2];
+      for (var j = 0; j < node.inputLinks.length; j++) node.inputLinks[j].weight = buf[idx++];
+    }
+  }
+}
+
+function nnCloneWeights(): Weights {
+  var f = nnFlattenWeights();
+  var copy = new Float32Array(f.length);
+  for (var i = 0; i < f.length; i++) copy[i] = f[i];
+  return [copy]; // Weights = Float32Array[]
+}
+
+function nnSetWeights(w: Weights): void {
+  nnSetWeightsFromFlat(w[0]);
+}
+
+
+
 function oneStep(): void {
+  if (isFLEnabled() && state.problem === Problem.CLASSIFICATION) {
+    oneStepFL();
+  } else {
+    oneStepSGD();
+  }
+}
+
+
+function oneStepFL(): void {
+  var cfg = readFLConfig();
+  if (flLastAlgo !== cfg.algo) { flServerAdam = null; flLastAlgo = cfg.algo; }
+
+  rebuildFLClientsIfNeeded(cfg);
+
+  // Global weights at round start.
+  var w0 = nnCloneWeights()[0];
+
+  // Sample clients.
+  var k = Math.max(1, Math.round(cfg.clientFrac * flClients.length));
+  var shuffled = flClients.slice(0);
+  shuffled.sort(function(){ return Math.random() - 0.5; });
+  var dropout = (cfg.clientDropout !== undefined && cfg.clientDropout !== null) ? cfg.clientDropout : 0;
+  var roundClients: ClientData[] = [];
+  for (var i = 0; i < k && i < shuffled.length; i++) {
+    if (Math.random() > dropout) roundClients.push(shuffled[i]);
+  }
+  if (roundClients.length === 0 && shuffled.length > 0) roundClients.push(shuffled[0]);
+
+  // Each client trains locally from w0 for E epochs.
+  var deltas: {delta: Weights; weight: number}[] = [];
+  for (var rc = 0; rc < roundClients.length; rc++) {
+    var client = roundClients[rc];
+
+    // Set local weights to w0
+    var wLocalFlat = new Float32Array(w0.length);
+    for (var ii = 0; ii < w0.length; ii++) wLocalFlat[ii] = w0[ii];
+    nnSetWeightsFromFlat(wLocalFlat);
+
+    for (var e = 0; e < cfg.localEpochs; e++) {
+      // Loop over batches
+      for (var b = 0; b < client.batches.length; b++) {
+        var batch = client.batches[b];
+        // Per-example forward/backward
+        for (var t = 0; t < batch.x.length; t++) {
+          var xy = batch.x[t]; // raw [x,y]
+          var input = constructInput(xy[0], xy[1]); // respect current feature toggles
+          var target = batch.y[t] > 0 ? 1 : -1;     // back to {-1,1}
+          nn.forwardProp(network, input);
+          nn.backProp(network, target, nn.Errors.SQUARE);
+        }
+
+        // FedProx proximal term: add μ(w - w0) to grads before updating.
+        if (cfg.algo === "FedProx" && cfg.mu && cfg.mu > 0) {
+          var idx = 0;
+          for (var layerIdx = 1; layerIdx < network.length; layerIdx++) {
+            var layer = network[layerIdx];
+            // Biases
+            for (var i3 = 0; i3 < layer.length; i3++) {
+              var node = layer[i3];
+              var gBias = cfg.mu * (node.bias - w0[idx++]);
+              node.accInputDer += gBias;
+              node.numAccumulatedDers += 1;
+            }
+            // Weights
+            for (var i4 = 0; i4 < layer.length; i4++) {
+              var node2 = layer[i4];
+              for (var j = 0; j < node2.inputLinks.length; j++) {
+                var link = node2.inputLinks[j];
+                var gW = cfg.mu * (link.weight - w0[idx++]);
+                link.accErrorDer += gW;
+                link.numAccumulatedDers += 1;
+              }
+            }
+          }
+        }
+
+        // Local optimizer step with client LR (regularization reuses UI setting)
+        nn.updateWeights(network, cfg.clientLR, state.regularizationRate);
+      }
+    }
+
+    // Delta = w_local - w0
+    var wLocalAfter = nnFlattenWeights();
+    var deltaArr = new Float32Array(wLocalAfter.length);
+    for (var di = 0; di < wLocalAfter.length; di++) deltaArr[di] = wLocalAfter[di] - w0[di];
+    var delta: Weights = [deltaArr];
+
+    // Client-level DP (optional)
+    if (cfg.dpClientLevel && cfg.dpClipNorm && cfg.dpClipNorm > 0) {
+      delta = clipUpdate(delta, cfg.dpClipNorm);
+      var dpNoiseMult = (cfg.dpNoiseMult !== undefined && cfg.dpNoiseMult !== null) ? cfg.dpNoiseMult : 0;
+      var sigma = dpNoiseMult * cfg.dpClipNorm;
+      if (sigma > 0) delta = addGaussianNoise(delta, sigma);
+    }
+
+    deltas.push({delta: delta, weight: client.size});
+  }
+
+  // Aggregate
+  var agg = aggregateDeltas(deltas, !!cfg.weightedAggregation);
+
+  // Server-level DP
+  if (!cfg.dpClientLevel && cfg.dpClipNorm && cfg.dpClipNorm > 0) {
+    agg = clipUpdate(agg, cfg.dpClipNorm);
+    var dpNoiseMult2 = (cfg.dpNoiseMult !== undefined && cfg.dpNoiseMult !== null) ? cfg.dpNoiseMult : 0;
+    var sigma2 = dpNoiseMult2 * cfg.dpClipNorm;
+    if (sigma2 > 0) agg = addGaussianNoise(agg, sigma2);
+  }
+
+  // Server update: FedAdam vs FedAvg/FedProx
+  // in oneStepFL()
+  if (cfg.algo === "FedAdam") {
+    if (!flServerAdam) {
+      flServerAdam = new ServerAdam(
+        (cfg.serverLR !== undefined && cfg.serverLR !== null) ? cfg.serverLR : 0.01,
+        (cfg.beta1    !== undefined && cfg.beta1    !== null) ? cfg.beta1    : 0.9,
+        (cfg.beta2    !== undefined && cfg.beta2    !== null) ? cfg.beta2    : 0.999,
+        (cfg.eps      !== undefined && cfg.eps      !== null) ? cfg.eps      : 1e-8
+      );
+    }
+    // Treat agg as gradient on w0; deep-copy to avoid aliasing
+    var grad = [new Float32Array(agg[0].length)];
+    for (var gi = 0; gi < agg[0].length; gi++) grad[0][gi] = agg[0][gi];
+    var newW = flServerAdam.step([w0], grad);
+    nnSetWeights(newW);
+  } else {
+    // FedAvg/FedProx
+    const newFlat = new Float32Array(w0.length);
+    for (let i = 0; i < w0.length; i++) newFlat[i] = w0[i] + agg[0][i];
+    nnSetWeightsFromFlat(newFlat);
+  }
+  // Estimate comm bytes: model upload per participating client + one download
+  const nFloats = w0.length;
+  const commBytes = (nFloats * 4) * (roundClients.length + 1);
+  const fmt = (n:number) => {
+    if (n < 1024) return `${n|0} B`;
+    if (n < 1024*1024) return `${(n/1024).toFixed(1)} KB`;
+    if (n < 1024*1024*1024) return `${(n/1024/1024).toFixed(1)} MB`;
+    return `${(n/1024/1024/1024).toFixed(2)} GB`;
+  };
+  const set = (id:string, v:string) => {
+    const el = document.getElementById(id); if (el) el.textContent = v;
+  };
+  set("fl-round", String(iter + 1));
+  set("fl-participating", String(roundClients.length));
+  set("fl-comm", fmt(commBytes));
+
+  // Eval & UI (reuse existing loss charts etc.)
+  lossTrain = getLoss(network, trainData);
+  lossTest  = getLoss(network, testData);
+  iter++;
+  updateUI();
+}
+
+function oneStepSGD(): void {
   iter++;
   trainData.forEach((point, i) => {
     let input = constructInput(point.x, point.y);
@@ -944,6 +1297,10 @@ function reset(onStartup=false) {
     userHasInteracted();
   }
   player.pause();
+
+  flClients = null;
+  flServerAdam = null;
+  flLastSig = "";
 
   let suffix = state.numHiddenLayers !== 1 ? "s" : "";
   d3.select("#layers-label").text("Hidden layer" + suffix);
@@ -1085,6 +1442,8 @@ function generateData(firstTime = false) {
   testData = data.slice(splitIndex);
   heatMap.updatePoints(trainData);
   heatMap.updateTestPoints(state.showTestData ? testData : []);
+
+  flClients = null;
 }
 
 let firstInteraction = true;
