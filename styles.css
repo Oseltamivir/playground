@@ -780,7 +780,6 @@ g.column rect {
   margin-top: 0;
   margin-bottom: 5px;
 }
-
 /* Output column */
 .output.column {
   width: 250px;
@@ -833,6 +832,7 @@ g.column rect {
   width: 50%;
   height: 55px;
 }
+
 .metrics .train {
   color: #777;
 }
@@ -843,10 +843,8 @@ g.column rect {
 
 .output .output-stats .value {
   color: rgba(0, 0, 0, 0.6);
-  /*font-size: 20px;*/
   font-weight: 300;
   display: inline;
-
 }
 
 g.train circle {
@@ -856,7 +854,7 @@ g.train circle {
   fill-opacity: 0.9;
 }
 
- g.test circle {
+g.test circle {
   stroke-width: 1;
   stroke: black;
   stroke-opacity: 0.6;
@@ -873,7 +871,6 @@ article {
   background: white;
   padding: 80px 0;
   box-shadow: 0 0px 4px rgba(0, 0, 0, 0.1);
-  /*border-top: 1px solid rgba(0, 0, 0, 0.08);*/
 }
 
 article h2, article h3 {
@@ -898,7 +895,6 @@ article p {
   font-size: 17px;
   line-height: 1.6;
   color: rgba(0, 0, 0, 0.7);
-
 }
 
 /* Footer */
@@ -966,17 +962,13 @@ footer .links a:hover {
 .mdl-button--fab.mdl-button--colored:active,
 .mdl-button--fab.mdl-button--colored:focus,
 .mdl-button--fab.mdl-button--colored:focus:not(:active) {
-    background: #183D4E;
+  background: #183D4E;
 }
 
 /* Checkbox */
 
 .mdl-checkbox__box-outline {
   border-color: rgba(0, 0, 0, 0.5);
-}
-
-.mdl-checkbox.is-checked .mdl-checkbox__tick-outline {
-  background-color: #183D4E;
 }
 
 .mdl-checkbox.is-checked .mdl-checkbox__tick-outline {
@@ -1020,7 +1012,140 @@ footer .links a:hover {
 #main-part .mdl-slider.is-upgraded.is-lowest-value::-moz-range-thumb {
   border-color: #183D4E;
 }
+
 /* Keep grey focus circle for non-start values */
 #main-part .mdl-slider.is-upgraded:focus:not(:active)::-webkit-slider-thumb {
   box-shadow: 0 0 0 10px rgba(0,0,0, 0.12);
 }
+
+/* ------------------------------------------------------------------ */
+/* Top-controls layout: aligned 4-row FL UI with compact checkboxes   */
+/* (moved from inline <style> and expanded)                            */
+/* ------------------------------------------------------------------ */
+
+/* Let the top bar wrap to new lines */
+#top-controls .container{
+  display:flex;             /* already flex; ok to repeat */
+  flex-wrap:wrap;
+  align-items:flex-end;
+  row-gap: var(--row-gap);
+}
+
+/* Put each FL section on its own full-width row */
+#top-controls .fl-controls,
+#top-controls .fl-advanced-controls,
+#top-controls .fl-cluster-controls{
+  flex:0 0 100%;
+  width:100%;
+}
+
+/* Keep the Enable-FL checkbox compact on row 1 */
+#top-controls .ui-fl-enabled{
+  flex:0 0 auto;
+}
+
+/* Faint separators after row 1 and row 3 */
+#top-controls .fl-controls{
+  border-top: 1px solid var(--sep-color);  /* line after non-FL row */
+  padding-top: 14px;
+}
+#top-controls .fl-cluster-controls{
+  border-top: 1px solid var(--sep-color);  /* line after advanced row */
+  padding-top: 14px;
+  margin-top: 4px;
+}
+
+/* Shared grid for rows 2–4 so columns line up across rows:
+   [lead fixed] [three slider cols] [extra slider col] [small auto slot] */
+#top-controls .fl-grid{
+  display: grid;
+  grid-template-columns: var(--lead-col) 1fr 1fr 1fr 1fr auto;
+  gap: 12px var(--col-gap);
+  align-items: end;
+}
+
+/* Lead column controls */
+#top-controls .ui-fl-lead{
+  width: var(--lead-col);
+}
+
+/* Controls inside the grid can shrink/expand fluidly */
+#top-controls .fl-grid .control{
+  min-width: 0;
+  max-width: none;
+}
+
+/* Historical row style (used by non-grid rows) */
+#top-controls .fl-controls-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px 18px;
+  align-items:flex-end;
+}
+
+:root{
+  --sep-color: rgba(0,0,0,0.08);
+  --col-gap: 20px;
+  --row-gap: 24px;
+  --lead-col: 180px; /* Reduced for better balance */
+  --slider-col: 1fr; /* Make all slider columns equal */
+}
+
+/* Shared grid for rows 2–4 so columns line up across rows:
+   [lead fixed] [four equal slider cols] [small auto slot] */
+#top-controls .fl-grid{
+  display: grid;
+  grid-template-columns: var(--lead-col) var(--slider-col) var(--slider-col) var(--slider-col) var(--slider-col) auto;
+  gap: 12px var(--col-gap);
+  align-items: end;
+}
+
+/* Ensure all slider inputs have consistent width */
+#top-controls .fl-grid .control .slider input[type="range"] {
+  width: 100%; /* Fill the grid column completely */
+  min-width: 120px; /* Set minimum width for consistency */
+}
+
+/* Make sure control containers don't override the grid sizing */
+#top-controls .fl-grid .control {
+  min-width: 0; /* Allow grid to control sizing */
+  flex: none; /* Don't use flex sizing */
+}
+
+/* Make the lead column checkboxes more compact */
+#top-controls .ui-fl-checks .mdl-checkbox__label,
+#top-controls .ui-fl-clustered-group .mdl-checkbox__label{
+  font-size: 12px;
+  line-height: 1.2;
+  padding-left: 20px; /* Reduce checkbox spacing */
+}
+
+/* Compact the clustered FL group */
+#top-controls .ui-fl-clustered-group{
+  display:flex;
+  flex-direction:column;
+  gap:4px; /* Reduced from 8px */
+}
+
+#top-controls .ui-fl-clustered-group .stacked-label{
+  color:#777;
+  font-size:12px;
+  margin-top:0;
+  margin-bottom:4px;
+}
+
+#top-controls .ui-fl-clustered-group .select{
+  margin-top:2px;
+}
+
+/* ...existing code... */
+/* Right-side "Show advanced" checkbox fits tiny auto column neatly */
+#top-controls .ui-fl-adv-toggle{
+  align-self: end;
+}
+
+/* Hide any legacy standalone Similarity control if present elsewhere */
+#top-controls .ui-fl-similarity{ display:none; }
+
+/* If JS switches to class-based toggling, keep a helper ready */
+#top-controls .fl-advanced-controls.open{ display:block !important; }

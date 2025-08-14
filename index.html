@@ -41,53 +41,24 @@ limitations under the License.
   <script src="lib.js"></script>
 </head>
 
-
-<style>
-  /* let the top bar wrap to new lines */
-  #top-controls .container{
-    display:flex;            /* it's already flex in bundle.css; harmless to repeat */
-    flex-wrap:wrap;          /* <-- key change */
-    align-items:flex-end;
-    row-gap: 24px;
-  }
-
-  /* FL: put each section on its own full-width row */
-  #top-controls .fl-controls,
-  #top-controls .fl-advanced-controls{
-    flex:0 0 100%;
-    width:100%;
-  }
-
-  /* keep the checkbox as a small block; it will sit at the end of row 1
-     or start of row 2 depending on available width */
-  #top-controls .ui-fl-enabled{
-    flex:0 0 auto;
-  }
-
-  /* lay out items *within* each FL row horizontally, wrapping if narrow */
-  #top-controls .fl-controls-row{
-    display:flex;
-    flex-wrap:wrap;
-    gap:12px 18px;
-    align-items:flex-end;
-  }
-</style>
-
-
-
 <body>
   <!-- GitHub link -->
   <a class="github-link" href="https://github.com/tensorflow/playground" title="Source on GitHub" target="_blank">
     <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 60.5 60.5" width="60" height="60">
       <polygon class="bg" points="60.5,60.5 0,0 60.5,0 "/>
-      <path class="icon" d="M43.1,5.8c-6.6,0-12,5.4-12,12c0,5.3,3.4,9.8,8.2,11.4c0.6,0.1,0.8-0.3,0.8-0.6c0-0.3,0-1,0-2c-3.3,0.7-4-1.6-4-1.6c-0.5-1.4-1.3-1.8-1.3-1.8c-1.1-0.7,0.1-0.7,0.1-0.7c1.2,0.1,1.8,1.2,1.8,1.2c1.1,1.8,2.8,1.3,3.5,1c0.1-0.8,0.4-1.3,0.8-1.6c-2.7-0.3-5.5-1.3-5.5-5.9c0-1.3,0.5-2.4,1.2-3.2c-0.1-0.3-0.5-1.5,0.1-3.2c0,0,1-0.3,3.3,1.2c1-0.3,2-0.4,3-0.4c1,0,2,0.1,3,0.4c2.3-1.6,3.3-1.2,3.3-1.2c0.7,1.7,0.2,2.9,0.1,3.2c0.8,0.8,1.2,1.9,1.2,3.2c0,4.6-2.8,5.6-5.5,5.9c0.4,0.4,0.8,1.1,0.8,2.2c0,1.6,0,2.9,0,3.3c0,0.3,0.2,0.7,0.8,0.6c4.8-1.6,8.2-6.1,8.2-11.4C55.1,11.2,49.7,5.8,43.1,5.8z"/>
+      <path class="icon" d="M43.1,5.8c-6.6,0-12,5.4-12,12c0,5.3,3.4,9.8,8.2,11.4c0.6,0.1,0.8-0.3,0.8-0.6c0-0.3,0-1,0-2c-3.3,0.7-4-1.6-4-1.6
+      c-0.5-1.4-1.3-1.8-1.3-1.8c-1.1-0.7,0.1-0.7,0.1-0.7c1.2,0.1,1.8,1.2,1.8,1.2c1.1,1.8,2.8,1.3,3.5,1c0.1-0.8,0.4-1.3,0.8-1.6
+      c-2.7-0.3-5.5-1.3-5.5-5.9c0-1.3,0.5-2.4,1.2-3.2c-0.1-0.3-0.5-1.5,0.1-3.2c0,0,1-0.3,3.3,1.2c1-0.3,2-0.4,3-0.4c1,0,2,0.1,3,0.4
+      c2.3-1.6,3.3-1.2,3.3-1.2c0.7,1.7,0.2,2.9,0.1,3.2c0.8,0.8,1.2,1.9,1.2,3.2c0,4.6-2.8,5.6-5.5,5.9c0.4,0.4,0.8,1.1,0.8,2.2
+      c0,1.6,0,2.9,0,3.3c0,0.3,0.2,0.7,0.8,0.6c4.8-1.6,8.2-6.1,8.2-11.4C55.1,11.2,49.7,5.8,43.1,5.8z"/>
     </svg>
   </a>
+
   <!-- Header -->
   <header>
     <h2 class="l--page">Tinker With a <b>Neural Network</b> <span class="optional">Right Here </span>in Your Browser.</h2>
   </header>
-  
+
   <!-- Top Controls -->
   <div id="top-controls">
     <div class="container l--page">
@@ -103,10 +74,12 @@ limitations under the License.
           <i class="material-icons">skip_next</i>
         </button>
       </div>
+
       <div class="control">
         <span class="label">Epoch</span>
         <span class="value" id="iter-number"></span>
       </div>
+
       <div class="control ui-learningRate">
         <label for="learningRate">Learning rate</label>
         <div class="select">
@@ -125,6 +98,7 @@ limitations under the License.
           </select>
         </div>
       </div>
+
       <div class="control ui-activation">
         <label for="activations">Activation</label>
         <div class="select">
@@ -136,6 +110,7 @@ limitations under the License.
           </select>
         </div>
       </div>
+
       <div class="control ui-regularization">
         <label for="regularizations">Regularization</label>
         <div class="select">
@@ -146,6 +121,7 @@ limitations under the License.
           </select>
         </div>
       </div>
+
       <div class="control ui-regularizationRate">
         <label for="regularRate">Regularization rate</label>
         <div class="select">
@@ -163,6 +139,7 @@ limitations under the License.
           </select>
         </div>
       </div>
+
       <div class="control ui-problem">
         <label for="problem">Problem type</label>
         <div class="select">
@@ -172,6 +149,7 @@ limitations under the License.
           </select>
         </div>
       </div>
+
       <div class="control ui-fl-enabled">
         <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-enabled">
           <input type="checkbox" id="fl-enabled" class="mdl-checkbox__input">
@@ -179,10 +157,11 @@ limitations under the License.
         </label>
       </div>
 
-      <!-- Core FL Settings Row (only show when FL is enabled) -->
+      <!-- Row 2: General FL controls (full-width, under faint line) -->
       <div class="fl-controls" style="display: none;">
-        <div class="fl-controls-row">
-          <div class="control ui-fl-algo">
+        <div class="fl-controls-row fl-grid">
+          <!-- Lead column (fixed width across rows) -->
+          <div class="control ui-fl-lead ui-fl-algo">
             <label for="fl-algo">Algorithm</label>
             <div class="select">
               <select id="fl-algo">
@@ -194,6 +173,7 @@ limitations under the License.
             </div>
           </div>
 
+          <!-- Three aligned slider columns + one extra slider slot -->
           <div class="control ui-fl-numClients">
             <label for="fl-numClients">Clients:&nbsp;<span class="value" id="fl-numClients-val"></span></label>
             <p class="slider">
@@ -215,41 +195,43 @@ limitations under the License.
             </p>
           </div>
 
-          <div class="control ui-fl-alpha"> <!-- Dirichlet distribution -->
+          <div class="control ui-fl-alpha">
             <label for="fl-alpha">Non-IID α:&nbsp;<span class="value" id="fl-alpha-val"></span></label>
             <p class="slider">
               <input class="mdl-slider mdl-js-slider" type="range" id="fl-alpha" min="0.00" max="100" step="0.1" value="10">
             </p>
           </div>
 
-          <div class="control">
-            <button class="basic-button" id="fl-advanced-toggle">Advanced</button>
+          <!-- Right-side: Show Advanced checkbox -->
+          <div class="control ui-fl-adv-toggle">
+            <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-advanced-toggle">
+              <input type="checkbox" id="fl-advanced-toggle" class="mdl-checkbox__input">
+              <span class="mdl-checkbox__label">Show advanced</span>
+            </label>
           </div>
         </div>
       </div>
 
-      <!-- Advanced FL Controls Row -->
+      <!-- Row 3: Advanced FL controls (aligned; DP + Weight stacked in lead column) -->
       <div class="fl-advanced-controls" style="display: none;">
-        <div class="fl-controls-row">
-          <div class="control ui-fl-batchSize">
-            <label for="fl-batchSize">Batch:&nbsp;<span class="value" id="fl-batchSize-val"></span></label>
-            <p class="slider">
-              <input class="mdl-slider mdl-js-slider" type="range" id="fl-batchSize" min="1" max="64" step="1" value="16">
-            </p>
+        <div class="fl-controls-row fl-grid">
+          <!-- Lead column (stacked checkboxes under the Algorithm column) -->
+          <div class="control ui-fl-lead ui-fl-checks">
+            <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-clientLevelDp">
+              <input type="checkbox" id="fl-clientLevelDp" class="mdl-checkbox__input">
+              <span class="mdl-checkbox__label">Diff. Privacy</span>
+            </label>
+            <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-weighted">
+              <input type="checkbox" id="fl-weighted" class="mdl-checkbox__input" checked>
+              <span class="mdl-checkbox__label">Weight by size</span>
+            </label>
           </div>
-
+          <!-- Three aligned sliders -->
           <div class="control ui-fl-clientLR">
             <label for="fl-clientLR">Client LR:&nbsp;<span class="value" id="fl-clientLR-val"></span></label>
             <p class="slider">
               <input class="mdl-slider mdl-js-slider" type="range" id="fl-clientLR" min="0.001" max="0.2" step="0.001" value="0.03">
             </p>
-          </div>
-
-          <div class="control ui-fl-weighted">
-            <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-weighted">
-              <input type="checkbox" id="fl-weighted" class="mdl-checkbox__input" checked>
-              <span class="mdl-checkbox__label">Weight by size</span>
-            </label>
           </div>
 
           <div class="control ui-fl-dropout">
@@ -259,16 +241,6 @@ limitations under the License.
             </p>
           </div>
 
-          <div class="control ui-fl-clientLevelDp">
-            <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-clientLevelDp">
-              <input type="checkbox" id="fl-clientLevelDp" class="mdl-checkbox__input">
-              <span class="mdl-checkbox__label">Diff. Privacy</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Algorithm-specific and DP controls in a second row -->
-        <div class="fl-controls-row">
           <div id="fedprox-opts" class="control ui-fl-mu" style="display: none;">
             <label for="fl-mu">μ:&nbsp;<span class="value" id="fl-mu-val"></span></label>
             <p class="slider">
@@ -297,15 +269,28 @@ limitations under the License.
             </p>
           </div>
         </div>
-                <!-- Clustered FL controls -->
-        <div class="fl-controls-row">
-          <div class="control ui-fl-clustered">
+      </div> 
+
+      <!-- Row 4: Clustered FL (line above; lead column stacks Clustered FL + Similarity) -->
+      <div class="fl-cluster-controls" style="display: none;">
+        <div class="fl-controls-row fl-grid">
+          <!-- Lead column -->
+          <div class="control ui-fl-lead ui-fl-clustered-group">
             <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-clustered">
               <input type="checkbox" id="fl-clustered" class="mdl-checkbox__input">
               <span class="mdl-checkbox__label">Clustered FL</span>
             </label>
+
+            <label for="fl-similarity" class="stacked-label">Similarity</label>
+            <div class="select">
+              <select id="fl-similarity">
+                <option value="cosine">Cosine</option>
+                <option value="l2">L2</option>
+              </select>
+            </div>
           </div>
 
+          <!-- Three aligned sliders -->
           <div class="control ui-fl-numClusters">
             <label for="fl-numClusters">Clusters K:&nbsp;<span class="value" id="fl-numClusters-val"></span></label>
             <p class="slider">
@@ -327,21 +312,19 @@ limitations under the License.
             </p>
           </div>
 
-          <div class="control ui-fl-similarity">
-            <label for="fl-similarity">Similarity</label>
-            <div class="select">
-              <select id="fl-similarity">
-                <option value="cosine">Cosine</option>
-                <option value="l2">L2</option>
-              </select>
-            </div>
-          </div>
+          <!-- Extra slider slot kept for column symmetry -->
+          <div class="control"></div>
+
+          <!-- Tiny slot (auto col) left empty -->
+          <div class="control"></div>
         </div>
       </div>
+
     </div>
   </div>
 
   <!-- Main Part -->
+
   <div id="main-part" class="l--page">
 
     <!--  Data Column-->
@@ -542,8 +525,124 @@ limitations under the License.
     </button>
   </div>
   <!-- Article -->
-
   <article id="article-text">
+    <div class="l--body">
+      <h2>Federated Learning Parameters Guide</h2>
+      <p>This playground supports several federated learning algorithms with extensive hyperparameter control. Below is a comprehensive guide to all available parameters:</p>
+      
+      <h3>Core FL Settings</h3>
+      <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 15px; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px;">
+        <div style="font-weight: bold;">Parameter</div>
+        <div style="font-weight: bold;">Description</div>
+        <div style="font-weight: bold;">Range</div>
+        
+        <div><strong>Algorithm</strong></div>
+        <div>FL optimization algorithm: FedAvg (standard), FedProx (proximal), FedAdam (server-side Adam), SCAFFOLD (variance reduction)</div>
+        <div>Dropdown</div>
+        
+        <div><strong>Clients</strong></div>
+        <div>Total number of participating clients in the federation</div>
+        <div>2-80</div>
+        
+        <div><strong>Client Fraction</strong></div>
+        <div>Fraction of clients selected per round (C parameter)</div>
+        <div>0.05-1.0</div>
+        
+        <div><strong>Local Epochs</strong></div>
+        <div>Number of local training epochs per client per round (E parameter)</div>
+        <div>1-10</div>
+        
+        <div><strong>Non-IID α</strong></div>
+        <div>Dirichlet distribution parameter controlling data heterogeneity. Higher values = more IID, lower = more heterogeneous <br><strong>If set to 0, will default to 1e-8</strong> </div>
+        <div>0.0-100</div>
+      </div>
+
+      <h3>Advanced Settings</h3>
+      <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 15px; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px;">
+        <div style="font-weight: bold;">Parameter</div>
+        <div style="font-weight: bold;">Description</div>
+        <div style="font-weight: bold;">Range</div>
+        
+        <div><strong>Client LR</strong></div>
+        <div>Local learning rate for client-side SGD optimization</div>
+        <div>0.001-0.2</div>
+        
+        <div><strong>Dropout</strong></div>
+        <div>Probability that a selected client silently drops out (communication failure simulation)</div>
+        <div>0.0-0.9</div>
+        
+        <div><strong>Weight by size</strong></div>
+        <div>Use weighted aggregation based on client dataset sizes (|D_k|)</div>
+        <div>Checkbox</div>
+        
+        <div><strong>μ (FedProx)</strong></div>
+        <div>Proximal term strength for FedProx algorithm. Adds μ||w - w₀||² penalty to local objectives</div>
+        <div>0.0-1.0</div>
+        
+        <div><strong>Server LR (FedAdam)</strong></div>
+        <div>Server-side learning rate for FedAdam optimizer</div>
+        <div>0.001-0.1</div>
+      </div>
+
+      <h3>Differential Privacy</h3>
+      <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 15px; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px;">
+        <div style="font-weight: bold;">Parameter</div>
+        <div style="font-weight: bold;">Description</div>
+        <div style="font-weight: bold;">Range</div>
+        
+        <div><strong>Diff. Privacy</strong></div>
+        <div>Enable client-level differential privacy (vs server-level when unchecked)</div>
+        <div>Checkbox</div>
+        
+        <div><strong>DP Clip</strong></div>
+        <div>L2 norm clipping threshold for gradient/update vectors</div>
+        <div>0.0-10.0</div>
+        
+        <div><strong>DP σ</strong></div>
+        <div>Gaussian noise multiplier. Effective noise = σ × clip_norm</div>
+        <div>0.0-2.0</div>
+      </div>
+
+      <h3>Clustered Federated Learning</h3>
+      <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 15px; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px;">
+        <div style="font-weight: bold;">Parameter</div>
+        <div style="font-weight: bold;">Description</div>
+        <div style="font-weight: bold;">Range</div>
+        
+        <div><strong>Clustered FL</strong></div>
+        <div>Enable clustering clients into groups with separate models</div>
+        <div>Checkbox</div>
+        
+        <div><strong>Similarity Metric</strong></div>
+        <div>Distance metric for clustering: Cosine similarity or L2 distance</div>
+        <div>Dropdown</div>
+        
+        <div><strong>Clusters K</strong></div>
+        <div>Number of client clusters (separate models)</div>
+        <div>1-8</div>
+        
+        <div><strong>Recluster Every</strong></div>
+        <div>Frequency of reclustering clients (in rounds)</div>
+        <div>1-20</div>
+        
+        <div><strong>Warmup Rounds</strong></div>
+        <div>Initial rounds before first clustering operation</div>
+        <div>0-10</div>
+      </div>
+    </div>
+
+    <div class="l--body">
+      <h2> Why both cosine similarity and l2 distance exists? </h2>
+      <p> Ghosh et al. [26] proposes a l2-distance clustering algorithm to 
+      determine the distribution similarity of the clients. This approach 
+      has the limitation that it only works if the client’s risk
+      functions are convex and the minima of different clusters are
+      well separated. The l2-distance also is not able to distinguish
+      congruent from incongruent settings. This means that the
+      method will incorrectly split up clients in the conventional
+      congruent non-iid setting.</p>
+    </div>
+    
     <div class="l--body">
       <h2>Um, What Is a Neural Network?</h2>
       <p>It’s a technique for building a computer program that learns from data. It is based very loosely on how we think the human brain works. First, a collection of software “neurons” are created and connected together, allowing them to send messages to each other. Next, the network is asked to solve a problem, which it attempts to do over and over, each time strengthening the connections that lead to success and diminishing those that lead to failure. For a more detailed introduction to neural networks, Michael Nielsen’s <a href="http://neuralnetworksanddeeplearning.com/index.html">Neural Networks and Deep Learning</a> is a good place to start. For a more technical overview, try <a href="http://www.deeplearningbook.org/">Deep Learning</a> by Ian Goodfellow, Yoshua Bengio, and Aaron Courville.</p>

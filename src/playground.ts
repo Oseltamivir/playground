@@ -235,10 +235,10 @@ function readFLConfig(): FLConfig {
   const algo = getElSel("fl-algo", "FedAvg") as any;
   const cfg: FLConfig = {
     algo,
-    numClients: getElInt("fl-numClients", 50),
+    numClients: getElInt("fl-numClients", 30),
     clientFrac: Math.max(0.05, Math.min(1, +getElNum("fl-clientFrac", 0.2))),
     localEpochs: getElInt("fl-localEpochs", 1),
-    batchSize: getElInt("fl-batchSize", 16),
+    batchSize: getElInt("batchSize", 16),
     clientLR: getElNum("fl-clientLR", 0.03),
     clientOptimizer: "sgd",
     weightedAggregation: getElChecked("fl-weighted"),
@@ -265,23 +265,72 @@ function readFLConfig(): FLConfig {
 
 
 function makeGUI() {
-  // In the makeGUI function, update the FL enabled change handler
+  // Clean up the FL control handlers - remove duplicates and organize properly
   d3.select("#fl-enabled").on("change", function() {
     const flControls = d3.select(".fl-controls");
     const flAdvanced = d3.select(".fl-advanced-controls");
+    const flCluster = d3.select(".fl-cluster-controls");
+    const flMetrics = d3.select("#fl-metrics-container");
     
     if (this.checked) {
       flControls.style("display", "block");
-      initFLCharts(); // Make sure this is called
+      initFLCharts();
     } else {
       flControls.style("display", "none");
       flAdvanced.style("display", "none");
-      d3.select("#fl-metrics-container").style("display", "none");
+      flCluster.style("display", "none");
+      flMetrics.style("display", "none");
     }
     
     parametersChanged = true;
     userHasInteracted();
   });
+
+  // FL Advanced Toggle Logic
+  d3.select("#fl-advanced-toggle").on("change", function() {
+    const flAdvanced = d3.select(".fl-advanced-controls");
+    const flCluster = d3.select(".fl-cluster-controls");
+    
+    if (this.checked) {
+      flAdvanced.style("display", "block");
+      flCluster.style("display", "block");
+    } else {
+      flAdvanced.style("display", "none");
+      flCluster.style("display", "none");
+    }
+    
+    parametersChanged = true;
+    userHasInteracted();
+  });
+
+  // Add missing Clustered FL toggle handler
+  d3.select("#fl-clustered").on("change", function() {
+    const flCluster = d3.select(".fl-cluster-controls");
+    
+    if (this.checked) {
+      flCluster.style("display", "block");
+    } else {
+      flCluster.style("display", "none");
+    }
+    
+    parametersChanged = true;
+    userHasInteracted();
+  });
+
+  // Differential Privacy Controls Toggle
+  d3.select("#fl-clientLevelDp").on("change", function() {
+    const dpControls = d3.selectAll(".ui-fl-clip, .ui-fl-noise");
+    
+    if (this.checked) {
+      dpControls.style("display", "block");
+    } else {
+      dpControls.style("display", "none");
+    }
+    
+    parametersChanged = true;
+    userHasInteracted();
+  });
+  
   d3.select("#reset-button").on("click", () => {
     reset();
     userHasInteracted();
@@ -468,24 +517,77 @@ function makeGUI() {
   });
   problem.property("value", getKeyFromValue(problems, state.problem));
 
-  // In the makeGUI function, update the FL enabled change handler
-  d3.select("#fl-enabled").on("change", function() {
-    const flControls = d3.select(".fl-controls");
-    const flAdvanced = d3.select(".fl-advanced-controls");
-    
-    if (this.checked) {
-      flControls.style("display", "block");
-      initFLCharts(); // Add this line
-    } else {
-      flControls.style("display", "none");
-      flAdvanced.style("display", "none");
-      d3.select("#fl-metrics-container").style("display", "none"); // Add this line
-    }
-    
-    parametersChanged = true;
-    userHasInteracted();
-  });
+  // Move all the bindMirror calls and algorithm-specific logic here
+  function bindMirror(idRange: string, idSpan: string) {
+    var el = document.getElementById(idRange) as HTMLInputElement;
+    var sp = document.getElementById(idSpan) as HTMLElement;
+    if (!el || !sp) return;
+    var update = function(){ sp.textContent = el.value; };
+    el.addEventListener("input", update);
+    update();
   }
+  
+  bindMirror("fl-numClients", "fl-numClients-val");
+  bindMirror("fl-clientFrac", "fl-clientFrac-val");
+  bindMirror("fl-localEpochs", "fl-localEpochs-val");
+  bindMirror("fl-clientLR", "fl-clientLR-val");
+  bindMirror("fl-alpha", "fl-alpha-val");
+  bindMirror("fl-dropout", "fl-dropout-val");
+  bindMirror("fl-clip", "fl-clip-val");
+  bindMirror("fl-noise", "fl-noise-val");
+  bindMirror("fl-numClusters", "fl-numClusters-val");
+  bindMirror("fl-reclusterEvery", "fl-reclusterEvery-val");
+  bindMirror("fl-warmupRounds", "fl-warmupRounds-val");
+
+  // Show/hide FedAdam/FedProx options
+  var algoSel = document.getElementById("fl-algo") as HTMLSelectElement;
+  function showAlgoOpts(){
+    var v = algoSel ? algoSel.value : "FedAvg";
+    var a = document.getElementById("fedadam-opts") as HTMLElement;
+    var p = document.getElementById("fedprox-opts") as HTMLElement;
+    if (a) a.style.display = (v === "FedAdam") ? "" : "none";
+    if (p) p.style.display = (v === "FedProx") ? "" : "none";
+  }
+  if (algoSel) {
+    algoSel.addEventListener("change", function(){ 
+      flServerAdam = null; 
+      flScaffoldC = null; 
+      flScaffoldCi = []; 
+      showAlgoOpts(); 
+    });
+    showAlgoOpts();
+  }
+  
+  // Add scale to the gradient color map.
+  let x = d3.scale.linear().domain([-1, 1]).range([0, 144]);
+  let xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom")
+    .tickValues([-1, 0, 1])
+    .tickFormat(d3.format("d"));
+  d3.select("#colormap g.core").append("g")
+    .attr("class", "x axis")
+    .attr("transform", "translate(0,10)")
+    .call(xAxis);
+
+  // Listen for css-responsive changes and redraw the svg network.
+  window.addEventListener("resize", () => {
+    let newWidth = document.querySelector("#main-part")
+        .getBoundingClientRect().width;
+    if (newWidth !== mainWidth) {
+      mainWidth = newWidth;
+      drawNetwork(network);
+      updateUI(true);
+    }
+  });
+
+  // Hide the text below the visualization depending on the URL.
+  if (state.hideText) {
+    d3.select("#article-text").style("display", "none");
+    d3.select("div.more").style("display", "none");
+    d3.select("header").style("display", "none");
+  }
+}
 
   function bindMirror(idRange: string, idSpan: string) {
     var el = document.getElementById(idRange) as HTMLInputElement;
@@ -498,7 +600,6 @@ function makeGUI() {
     bindMirror("fl-numClients", "fl-numClients-val");
     bindMirror("fl-clientFrac", "fl-clientFrac-val");
     bindMirror("fl-localEpochs", "fl-localEpochs-val");
-    bindMirror("fl-batchSize", "fl-batchSize-val");
     bindMirror("fl-clientLR", "fl-clientLR-val");
     bindMirror("fl-alpha", "fl-alpha-val");
     bindMirror("fl-dropout", "fl-dropout-val");
@@ -510,6 +611,7 @@ function makeGUI() {
     bindMirror("fl-numClusters", "fl-numClusters-val");
     bindMirror("fl-reclusterEvery", "fl-reclusterEvery-val");
     bindMirror("fl-warmupRounds", "fl-warmupRounds-val");
+    bindMirror("fl-mu", "fl-mu-val");
 
     // Show/hide FedAdam/FedProx options
     var algoSel = document.getElementById("fl-algo") as HTMLSelectElement;
@@ -546,18 +648,19 @@ function makeGUI() {
   });
 
   // FL Advanced Toggle Logic
-  d3.select("#fl-advanced-toggle").on("click", function() {
+  d3.select("#fl-advanced-toggle").on("change", function() {
     const flAdvanced = d3.select(".fl-advanced-controls");
-    const currentDisplay = flAdvanced.style("display");
+    const flCluster = d3.select(".fl-cluster-controls");
     
-    if (currentDisplay === "none" || currentDisplay === "") {
+    if (this.checked) {
       flAdvanced.style("display", "block");
-      d3.select(this).text("Hide Advanced");
+      flCluster.style("display", "block");
     } else {
       flAdvanced.style("display", "none");
-      d3.select(this).text("Advanced");
+      flCluster.style("display", "none");
     }
     
+    parametersChanged = true;
     userHasInteracted();
   });
 
@@ -1121,7 +1224,7 @@ function constructInput(x: number, y: number): number[] {
 
 function rebuildFLClientsIfNeeded(cfg: FLConfig): void {
   // Rebuild when seed changes or partition knobs change.
-  var sig = state.seed + "|" + cfg.numClients + "|" + cfg.batchSize + "|" + cfg.iidAlpha + "|" + state.problem;
+  var sig = state.seed + "|" + cfg.numClients + "|" + state.batchSize + "|" + cfg.iidAlpha + "|" + state.problem;
   if (flClients && flLastSeed === state.seed && flLastSig === sig) return;
 
   // Only classification is supported here (2 classes in the Playground).
@@ -1131,7 +1234,7 @@ function rebuildFLClientsIfNeeded(cfg: FLConfig): void {
     X.push([trainData[i].x, trainData[i].y]);
     Y.push(trainData[i].label > 0 ? 1 : 0);
   }
-  flClients = makeClientsFromXY(X, Y, 2, cfg.numClients, cfg.batchSize, cfg.iidAlpha);
+  flClients = makeClientsFromXY(X, Y, 2, cfg.numClients, state.batchSize, cfg.iidAlpha);
   flLastSeed = state.seed;
   flLastSig = sig;
 
@@ -1290,7 +1393,7 @@ function reclusterIfNeeded(cfg: FLConfig): void {
   flRoundsSinceCluster = 0;
 }
 
-
+// ...existing code...
 
 function initFLCharts() {
   if (!isFLEnabled()) return;
@@ -1298,28 +1401,35 @@ function initFLCharts() {
   // Show FL metrics container
   d3.select("#fl-metrics-container").style("display", "block");
   
-  // Initialize charts
+  // Clear existing charts first
+  d3.select("#participation-chart").selectAll("*").remove();
+  d3.select("#comm-chart").selectAll("*").remove();
+  d3.select("#client-loss-chart").selectAll("*").remove();
+  d3.select("#convergence-chart").selectAll("*").remove();
+  
+  // Initialize charts with proper sizing
   flCharts.participation = new AppendingLineChart(
     d3.select("#participation-chart"),
-    ["#2196F3", "#4CAF50"] // Blue for selected, green for participated
+    ["#2196F3", "#4CAF50"], // Blue for selected, green for participated
   );
   
   flCharts.communication = new AppendingLineChart(
     d3.select("#comm-chart"),
-    ["#FF9800"] // Orange for comm cost
+    ["#FF9800"], // Orange for comm cost
   );
   
   flCharts.clientLoss = new AppendingLineChart(
     d3.select("#client-loss-chart"),
-    ["#F44336", "#9C27B0", "#607D8B"] // Red for max, purple for mean, blue-grey for min
+    ["#F44336", "#9C27B0", "#607D8B"], // Red for max, purple for mean, blue-grey for min
   );
   
   flCharts.convergence = new AppendingLineChart(
     d3.select("#convergence-chart"),
-    ["#795548"] // Brown for convergence rate
+    ["#795548"], // Brown for convergence rate
   );
 }
 
+// ...existing code...
 function updateFLCharts() {
   if (!isFLEnabled() || Object.keys(flCharts).length === 0) return;
   
