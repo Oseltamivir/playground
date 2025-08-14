@@ -91,7 +91,7 @@ export function simulateFederatedTraining(
       for (var li2 = 0; li2 < agg.length; li2++) {
         var a = agg[li2];
         var gcopy = new Float32Array(a.length);
-        for (var jj = 0; jj < a.length; jj++) gcopy[jj] = a[jj];
+        for (var jj = 0; jj < a.length; jj++) gcopy[jj] = -a[jj];
         grad.push(gcopy);
       }
       w = adam.step(w, grad);

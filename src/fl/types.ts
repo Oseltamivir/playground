@@ -13,7 +13,9 @@ export interface ClientData {
   classHist?: number[];    // optional: for UI
 }
 
-export type Algo = "FedAvg" | "FedAdam" | "FedProx";
+export type Algo = "FedAvg" | "FedAdam" | "FedProx" | "SCAFFOLD";
+export type SimilarityMetric = "cosine" | "l2";
+
 
 export interface FLConfig {
   algo: Algo;
@@ -26,8 +28,10 @@ export interface FLConfig {
   weightedAggregation: boolean; // weight by |D_k|
   clientDropout: number;        // prob a sampled client silently drops
   iidAlpha: number;             // Dirichlet α (∞ ~ IID, small ~ highly non-IID)
+  
   // FedProx
   mu?: number;                  // proximal strength
+
   // FedAdam (server-side)
   serverLR?: number;
   beta1?: number;
@@ -38,6 +42,14 @@ export interface FLConfig {
   dpClipNorm?: number;          // L2 clip on client update
   dpNoiseMult?: number;         // σ; effective noise = σ * clip
   dpClientLevel?: boolean;      // if false, apply at server on aggregated update
+
+  // Clustering
+  clusteringEnabled?: boolean;
+  numClusters?: number;        // fixed K (>=1); 1 == disabled behavior
+  reclusterEvery?: number;     // rounds between reclustering
+  warmupRounds?: number;       // rounds before first recluster
+  similarityMetric?: SimilarityMetric; // "cosine" | "l2"
+
 }
 
 export interface RoundMetrics {

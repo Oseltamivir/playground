@@ -20,10 +20,22 @@ type DataPoint = {
   y: number[];
 };
 
+function movingAverage(data: number[], window: number): number[] {
+  const result: number[] = [];
+  for (let i = 0; i < data.length; i++) {
+    let start = Math.max(0, i - window + 1);
+    let sum = 0;
+    for (let j = start; j <= i; j++) sum += data[j];
+    result.push(sum / (i - start + 1));
+  }
+  return result;
+}
+
 /**
  * A multi-series line chart that allows you to append new data points
  * as data becomes available.
  */
+/* ...existing code... */
 export class AppendingLineChart {
   private numLines: number;
   private data: DataPoint[] = [];
@@ -31,14 +43,21 @@ export class AppendingLineChart {
   private xScale;
   private yScale;
   private paths;
+  private smoothPaths;
   private lineColors: string[];
+  private lightColors: string[];
 
   private minY = Number.MAX_VALUE;
   private maxY = Number.MIN_VALUE;
 
+  private smoothingWindow: number = 20; 
+
   constructor(container, lineColors: string[]) {
     this.lineColors = lineColors;
     this.numLines = lineColors.length;
+    // Generate lighter colors for background
+    this.lightColors = lineColors.map(c => d3.rgb(c).brighter(2).toString());
+
     let node = container.node() as HTMLElement;
     let totalWidth = node.offsetWidth;
     let totalHeight = node.offsetHeight;
@@ -60,16 +79,39 @@ export class AppendingLineChart {
       .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
+    // Background (raw) lines
     this.paths = new Array(this.numLines);
+    // Foreground (smoothed) lines
+    this.smoothPaths = new Array(this.numLines);
+
     for (let i = 0; i < this.numLines; i++) {
+      // Raw data (background)
       this.paths[i] = this.svg.append("path")
-        .attr("class", "line")
+        .attr("class", "line raw")
         .style({
           "fill": "none",
-          "stroke": lineColors[i],
+          "stroke": this.lightColors[i],
+          "stroke-width": "1.5px",
+          "stroke-opacity": 0.4
+        });
+      // Smoothed data (foreground)
+      this.smoothPaths[i] = this.svg.append("path")
+        .attr("class", "line smooth")
+        .style({
+          "fill": "none",
+          "stroke": this.lineColors[i],
           "stroke-width": "1.5px"
         });
     }
+  }
+
+  getData(): DataPoint[] {
+    return this.data;
+  }
+
+  setSmoothingWindow(window: number) {
+    this.smoothingWindow = window;
+    this.redraw();
   }
 
   reset() {
@@ -94,16 +136,31 @@ export class AppendingLineChart {
 
   private redraw() {
     // Adjust the x and y domain.
-    this.xScale.domain([1, this.data.length]);
+    this.xScale.domain([1, Math.max(2, this.data.length)]);
     this.yScale.domain([this.minY, this.maxY]);
     // Adjust all the <path> elements (lines).
     let getPathMap = (lineIndex: number) => {
-      return d3.svg.line<{x: number, y:number}>()
-      .x(d => this.xScale(d.x))
-      .y(d => this.yScale(d.y[lineIndex]));
+      return d3.svg.line<{x: number, y:number[]}>()
+        .x(d => this.xScale(d.x))
+        .y(d => this.yScale(d.y[lineIndex]));
+    };
+    let getSmoothPathMap = (lineIndex: number) => {
+      // Compute smoothed data for this line
+      let smoothed = movingAverage(this.data.map(d => d.y[lineIndex]), this.smoothingWindow);
+      let smoothData = this.data.map((d, i) => ({x: d.x, y: (() => {
+        let arr = d.y.slice();
+        arr[lineIndex] = smoothed[i];
+        return arr;
+      })()}));
+      return d3.svg.line<{x: number, y:number[]}>()
+        .x(d => this.xScale(d.x))
+        .y(d => this.yScale(d.y[lineIndex]))(smoothData);
     };
     for (let i = 0; i < this.numLines; i++) {
+      // Raw
       this.paths[i].datum(this.data).attr("d", getPathMap(i));
+      // Smoothed
+      this.smoothPaths[i].attr("d", getSmoothPathMap(i));
     }
   }
 }

@@ -782,9 +782,41 @@ g.column rect {
 }
 
 /* Output column */
-
 .output.column {
-  width: 275px;
+  width: 250px;
+}
+
+/* FL Metrics column */
+.fl-metrics.column {
+  width: 280px;
+  margin-left: 60px;
+}
+
+.fl-metrics-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fl-chart {
+  min-height: 100px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  background: transparent;
+}
+
+.fl-chart h6 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: #666;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+.fl-chart > div:last-child {
+  height: 70px;
+  width: 100%;
 }
 
 .metrics {
