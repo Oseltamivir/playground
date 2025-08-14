@@ -1,23 +1,84 @@
 import {ClientData} from "./types";
 
-// Crude Dirichlet sampler using Gamma(alpha,1) approximations; fine for UI.
-function sampleDirichlet(k: number, alpha: number): number[] {
-  var out: number[] = [];
-  var sum = 0;
-  var a = (alpha > 0 ? alpha : 1e-3);
-  for (var i = 0; i < k; i++) {
-    // Box–Muller normal, transform to rough Gamma; good enough for visualization.
-    var u = Math.random(), v = Math.random();
-    var n = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-    var x = (a - 1/3) * Math.pow(1 + n / Math.sqrt(9 * a - 3), 3);
-    if (!isFinite(x) || x <= 0) x = 1e-6;
-    out.push(x);
+// Reproducible symmetric-Dirichlet sampler with a correct Gamma RNG.
+// - Uses xorshift32 PRNG seeded at 3407 (persists across calls).
+// - Marsaglia–Tsang for shape >= 1; boost trick for shape < 1.
+// - No node modules.
+export function sampleDirichlet(k: number, alpha: number): number[] {
+  // persistent state on the function object for reproducibility across calls
+  const self: any = sampleDirichlet;
+  if (self._state === undefined) self._state = 3407 >>> 0; // fixed seed
+  if (self._gaussSpare === undefined) self._gaussSpare = null;
+
+  let state: number = self._state >>> 0;
+
+  // xorshift32 -> U(0,1)
+  function rand(): number {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    const u = (state >>> 0) / 4294967296; // [0,1)
+    return u > 0 ? u : 1 / 4294967296;    // avoid exact 0 for logs
+  }
+
+  // Box–Muller -> N(0,1), with spare reuse
+  function randn(): number {
+    if (self._gaussSpare != null) {
+      const z = self._gaussSpare;
+      self._gaussSpare = null;
+      return z;
+    }
+    const u1 = rand(), u2 = rand();
+    const r = Math.sqrt(-2.0 * Math.log(u1));
+    const theta = 2.0 * Math.PI * u2;
+    const z0 = r * Math.cos(theta);
+    const z1 = r * Math.sin(theta);
+    self._gaussSpare = z1;
+    return z0;
+  }
+
+  // Gamma(shape=a, scale=1)
+  function gamma1(a: number): number {
+    const EPS = 1e-12;
+    if (!(a > 0)) a = EPS;
+    if (a < 1) {
+      // Boosting trick: Gamma(a) = Gamma(a+1) * U^(1/a)
+      const u = rand();
+      return gamma1(a + 1) * Math.pow(u, 1 / a);
+    }
+    // Marsaglia–Tsang (2000)
+    const d = a - 1 / 3;
+    const c = 1 / Math.sqrt(9 * d);
+    while (true) {
+      const x = randn();
+      let v = 1 + c * x;
+      if (v <= 0) continue;
+      v = v * v * v;
+      const u = rand();
+      if (u < 1 - 0.0331 * (x * x) * (x * x)) return d * v;
+      if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v;
+    }
+  }
+
+  const a = alpha > 0 ? alpha : 1e-8;
+  const xs: number[] = new Array(k);
+  let sum = 0;
+  for (let i = 0; i < k; i++) {
+    const x = gamma1(a);
+    xs[i] = x;
     sum += x;
   }
-  // normalize
-  for (var j = 0; j < k; j++) out[j] = out[j] / sum;
-  return out;
+  if (!(sum > 0)) {
+    // Fallback to uniform (extremely unlikely)
+    for (let i = 0; i < k; i++) xs[i] = 1 / k;
+  } else {
+    for (let i = 0; i < k; i++) xs[i] /= sum;
+  }
+
+  self._state = state >>> 0; // persist PRNG state
+  return xs;
 }
+
 
 export function makeClientsFromXY(
   X: number[][], y: number[], numClasses: number,
