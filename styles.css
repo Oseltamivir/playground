@@ -229,7 +229,6 @@ header h1 .optional {
 }
 
 /* Top Controls */
-
 #top-controls {
   border-bottom: 1px solid #ddd;
   padding: 18px 0;
@@ -254,6 +253,9 @@ header h1 .optional {
 }
 
 #top-controls .timeline-controls {
+  position: sticky;
+  top: 0;
+  z-index: 200;
   display: -webkit-box;
   display: -moz-box;
   display: -ms-flexbox;
@@ -296,7 +298,7 @@ header h1 .optional {
   color: #777;
   font-size: 13px;
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
   font-weight: 300;
 }
 
@@ -584,6 +586,11 @@ g.column rect {
   color: rgba(0, 0, 0, 0.8);
 }
 
+/* data column */
+#data-column {
+  margin-right: 2px;
+}
+
 /* Features column */
 
 .features.column {
@@ -783,12 +790,13 @@ g.column rect {
 /* Output column */
 .output.column {
   width: 250px;
+  margin-left: 10px;
 }
 
 /* FL Metrics column */
 .fl-metrics.column {
   width: 280px;
-  margin-left: 60px;
+  margin-left: 50px;
 }
 
 .fl-metrics-column {
@@ -1044,15 +1052,26 @@ footer .links a:hover {
   flex:0 0 auto;
 }
 
+#top-controls .fl-cluster-controls {
+  border-top: 1px solid #ddd;
+  padding-top: 4px; /* Reduce from default padding */
+  margin-top: 0px; /* Remove any top margin */
+}
+
+#top-controls .fl-cluster-controls .fl-controls-row {
+  margin-top: 0px;
+  padding-top: 4px;
+}
+
 /* Faint separators after row 1 and row 3 */
 #top-controls .fl-controls{
   border-top: 1px solid var(--sep-color);  /* line after non-FL row */
-  padding-top: 14px;
+  padding-top: 4px;
 }
 #top-controls .fl-cluster-controls{
   border-top: 1px solid var(--sep-color);  /* line after advanced row */
-  padding-top: 14px;
-  margin-top: 4px;
+  padding-top: 4px;
+  margin-top: 2px;
 }
 
 /* Shared grid for rows 2–4 so columns line up across rows:
@@ -1083,12 +1102,47 @@ footer .links a:hover {
   align-items:flex-end;
 }
 
+
 :root{
   --sep-color: rgba(0,0,0,0.08);
   --col-gap: 20px;
-  --row-gap: 24px;
-  --lead-col: 180px; /* Reduced for better balance */
-  --slider-col: 1fr; /* Make all slider columns equal */
+  --row-gap: 20px;
+  --lead-col: 180px;
+  --slider-col: 1fr;
+}
+
+#top-controls .fl-advanced-controls + .fl-cluster-controls {
+  /* Keep a small final gap (6px). Tweak 6px as needed. */
+  margin-top: calc(-1 * var(--row-gap, 10px) + 6px) !important;
+}
+
+/* Let the top bar wrap to new lines */
+#top-controls .container{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-end;
+  row-gap: var(--row-gap);
+}
+
+/* Put each FL section on its own full-width row */
+#top-controls .fl-controls,
+#top-controls .fl-advanced-controls,
+#top-controls .fl-cluster-controls{
+  flex:0 0 100%;
+  width:100%;
+  margin: 0; /* Reset margins to rely on gap */
+}
+
+/* Keep the Enable-FL checkbox compact on row 1 */
+#top-controls .ui-fl-enabled{
+  flex:0 0 auto;
+}
+
+/* Faint separators for FL sections */
+#top-controls .fl-controls,
+#top-controls .fl-cluster-controls {
+  border-top: 1px solid var(--sep-color);
+  padding-top: 10px; /* Add some padding above the controls within the row */
 }
 
 /* Shared grid for rows 2–4 so columns line up across rows:
@@ -1096,7 +1150,7 @@ footer .links a:hover {
 #top-controls .fl-grid{
   display: grid;
   grid-template-columns: var(--lead-col) var(--slider-col) var(--slider-col) var(--slider-col) var(--slider-col) auto;
-  gap: 12px var(--col-gap);
+  gap: 10px var(--col-gap);
   align-items: end;
 }
 
@@ -1116,7 +1170,7 @@ footer .links a:hover {
 #top-controls .ui-fl-checks .mdl-checkbox__label,
 #top-controls .ui-fl-clustered-group .mdl-checkbox__label{
   font-size: 12px;
-  line-height: 1.2;
+  line-height: 1.1;
   padding-left: 20px; /* Reduce checkbox spacing */
 }
 
@@ -1124,14 +1178,14 @@ footer .links a:hover {
 #top-controls .ui-fl-clustered-group{
   display:flex;
   flex-direction:column;
-  gap:4px; /* Reduced from 8px */
+  gap:3px; /* Reduced from 8px */
 }
 
 #top-controls .ui-fl-clustered-group .stacked-label{
   color:#777;
-  font-size:12px;
+  font-size:11px;
   margin-top:0;
-  margin-bottom:4px;
+  margin-bottom:3px;
 }
 
 #top-controls .ui-fl-clustered-group .select{

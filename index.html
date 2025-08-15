@@ -153,7 +153,7 @@ limitations under the License.
       <div class="control ui-fl-enabled">
         <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-enabled">
           <input type="checkbox" id="fl-enabled" class="mdl-checkbox__input">
-          <span class="mdl-checkbox__label">Enable Federated Learning</span>
+          <span class="mdl-checkbox__label">Enable FL</span>
         </label>
       </div>
 
@@ -177,7 +177,7 @@ limitations under the License.
           <div class="control ui-fl-numClients">
             <label for="fl-numClients">Clients:&nbsp;<span class="value" id="fl-numClients-val"></span></label>
             <p class="slider">
-              <input class="mdl-slider mdl-js-slider" type="range" id="fl-numClients" min="2" max="80" step="1" value="20">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-numClients" min="2" max="54" step="1" value="9">
             </p>
           </div>
 
@@ -198,7 +198,7 @@ limitations under the License.
           <div class="control ui-fl-alpha">
             <label for="fl-alpha">Non-IID α:&nbsp;<span class="value" id="fl-alpha-val"></span></label>
             <p class="slider">
-              <input class="mdl-slider mdl-js-slider" type="range" id="fl-alpha" min="0.00" max="100" step="0.1" value="10">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-alpha" min="1.0" max="100" step="0.1" value="10">
             </p>
           </div>
 
@@ -328,7 +328,7 @@ limitations under the License.
   <div id="main-part" class="l--page">
 
     <!--  Data Column-->
-    <div class="column data">
+    <div id="data-column" class="column data">
       <h4>
         <span>Data</span>
       </h4>
@@ -376,6 +376,9 @@ limitations under the License.
         </div>
           <button class="basic-button" id="data-regen-button" title="Regenerate data">
             Regenerate
+          </button>
+          <button class="basic-button" id="reset-model-button" title="Reset model weights and training state">
+            Reset model
           </button>
       </div>
     </div>
@@ -517,12 +520,10 @@ limitations under the License.
 
   </div>
 
-  <!-- More -->
-  <div class="more">
-    <!-- <button class="mdl-button mdl-js-button mdl-button--icon"><i class="material-icons">keyboard_arrow_down</i></button> -->
-    <button class="mdl-button mdl-js-button mdl-button--fab">
-      <i class="material-icons">keyboard_arrow_down</i>
-    </button>
+  <!-- Client Allocation (shown when FL + clustering are enabled) -->
+  <div id="client-allocation-section" class="l--page" style="display:none; margin-top: 16px; margin-bottom: 8px;">
+    <h3 style="margin: 8px 0 12px;">Client Data Allocation</h3>
+    <div id="client-allocation" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
   </div>
   <!-- Article -->
   <article id="article-text">
@@ -542,7 +543,7 @@ limitations under the License.
         
         <div><strong>Clients</strong></div>
         <div>Total number of participating clients in the federation</div>
-        <div>2-80</div>
+        <div>2-54</div>
         
         <div><strong>Client Fraction</strong></div>
         <div>Fraction of clients selected per round (C parameter)</div>
@@ -628,6 +629,32 @@ limitations under the License.
         <div><strong>Warmup Rounds</strong></div>
         <div>Initial rounds before first clustering operation</div>
         <div>0-10</div>
+      </div>
+      <h3>UI Controls and Buttons</h3>
+      <div style="display: grid; grid-template-columns: 1fr 3fr; gap: 15px; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px;">
+        <div style="font-weight: bold;">Button/Control</div>
+        <div style="font-weight: bold;">Description</div>
+
+        <div><strong>Play/Pause</strong> (▶/❚❚)</div>
+        <div>Starts or pauses the continuous training process.</div>
+
+        <div><strong>Step</strong> (►|)</div>
+        <div>Executes a single training step (one epoch or one federated round), allowing for granular inspection of the learning process.</div>
+
+        <div><strong>Reset Network</strong> (↻)</div>
+        <div>Resets all network weights, biases, and training progress (epoch count, loss graphs). The dataset remains the same.</div>
+
+        <div><strong>Regenerate Data</strong></div>
+        <div>Creates a new random dataset based on the current settings and resets the model.</div>
+
+        <div><strong>Reset Model</strong></div>
+        <div>Resets only the model's weights and biases, preserving the current dataset. Useful for re-running training on the exact same data.</div>
+
+        <div><strong>+/- Hidden Layers</strong></div>
+        <div>Adds or removes entire hidden layers from the network architecture.</div>
+
+        <div><strong>+/- Neurons</strong></div>
+        <div>Adjusts the number of neurons within a specific hidden layer. These controls appear between the layers.</div>
       </div>
     </div>
 

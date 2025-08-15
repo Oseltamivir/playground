@@ -52,6 +52,7 @@ let flClientCluster: number[] = [];                      // client index -> clus
 let flLastClientDelta: (Float32Array|null)[] = [];       // last delta per client
 let flClusterCount = 1;
 let flRoundsSinceCluster = 0;
+let flAllocationLocked: boolean = false;
 
 // Add after existing global variables
 let flMetrics = {
@@ -262,7 +263,64 @@ function readFLConfig(): FLConfig {
   return cfg;
 }
 
+function resetModel() {
+  lineChart.reset();
 
+  flScaffoldC = null;
+  flScaffoldCi = [];
+  // Lock allocation so pressing play won't change it.
+  flAllocationLocked = true;
+
+  flClusterWeights = null;
+  flClientCluster = []; // Reset cluster assignments
+  flLastClientDelta = []; // Also reset last deltas
+  flRoundsSinceCluster = 0;
+  
+  // Reset FL charts if enabled
+  if (isFLEnabled()) {
+    for (let chartName in flCharts) {
+      if (flCharts.hasOwnProperty(chartName)) {
+        flCharts[chartName].reset();
+      }
+    }
+    flMetrics = {
+      participationRates: [],
+      commCosts: [],
+      clientLosses: [],
+      convergenceRates: [],
+      fairnessMetrics: [],
+      dpPrivacyBudget: 0
+    };
+
+    flServerAdam = null;
+    flLastSig = "";
+    flScaffoldC = null;
+    flScaffoldCi = [];
+  }
+  
+  player.pause();
+
+  let suffix = state.numHiddenLayers !== 1 ? "s" : "";
+  d3.select("#layers-label").text("Hidden layer" + suffix);
+  d3.select("#num-layers").text(state.numHiddenLayers);
+
+  // Reset the network but keep the existing data
+  Math.seedrandom(state.seed);
+  iter = 0;
+  let numInputs = constructInput(0, 0).length;
+  let shape = [numInputs].concat(state.networkShape).concat([1]);
+  let outputActivation = (state.problem === Problem.REGRESSION) ?
+      nn.Activations.LINEAR : nn.Activations.TANH;
+  network = nn.buildNetwork(shape, state.activation, outputActivation,
+      state.regularization, constructInputIds(), state.initZero);
+  
+  // Recalculate losses with the reset network and existing data
+  lossTrain = getLoss(network, trainData);
+  lossTest = getLoss(network, testData);
+  
+  drawNetwork(network);
+  updateUI(true);
+}
 
 function makeGUI() {
   // Clean up the FL control handlers - remove duplicates and organize properly
@@ -275,6 +333,13 @@ function makeGUI() {
     if (this.checked) {
       flControls.style("display", "block");
       initFLCharts();
+
+      // Show advanced and cluster controls if advanced toggle is checked
+      const advancedToggle = document.getElementById("fl-advanced-toggle") as HTMLInputElement;
+      if (advancedToggle && advancedToggle.checked) {
+        flAdvanced.style("display", "block");
+        flCluster.style("display", "block"); // Always show cluster controls when advanced is on
+      }
     } else {
       flControls.style("display", "none");
       flAdvanced.style("display", "none");
@@ -284,6 +349,7 @@ function makeGUI() {
     
     parametersChanged = true;
     userHasInteracted();
+    renderClientAllocation();
   });
 
   // FL Advanced Toggle Logic
@@ -301,20 +367,16 @@ function makeGUI() {
     
     parametersChanged = true;
     userHasInteracted();
+    renderClientAllocation();
   });
 
-  // Add missing Clustered FL toggle handler
+  // Clustered FL toggle handler
   d3.select("#fl-clustered").on("change", function() {
-    const flCluster = d3.select(".fl-cluster-controls");
-    
-    if (this.checked) {
-      flCluster.style("display", "block");
-    } else {
-      flCluster.style("display", "none");
-    }
-    
+    // Only handle the logic, not visibility
+    flAllocationLocked = false;
     parametersChanged = true;
     userHasInteracted();
+    renderClientAllocation();
   });
 
   // Differential Privacy Controls Toggle
@@ -358,12 +420,19 @@ function makeGUI() {
 
   d3.select("#data-regen-button").on("click", () => {
     generateData();
+    flAllocationLocked = false;
     parametersChanged = true;
+  });
+
+  d3.select("#reset-model-button").on("click", () => {
+    resetModel();
+    userHasInteracted();
   });
 
   let dataThumbnails = d3.selectAll("canvas[data-dataset]");
   dataThumbnails.on("click", function() {
     let newDataset = datasets[this.dataset.dataset];
+    flAllocationLocked = false;
     if (newDataset === state.dataset) {
       return; // No-op.
     }
@@ -383,6 +452,7 @@ function makeGUI() {
   let regDataThumbnails = d3.selectAll("canvas[data-regDataset]");
   regDataThumbnails.on("click", function() {
     let newDataset = regDatasets[this.dataset.regdataset];
+    flAllocationLocked = false;
     if (newDataset === state.regDataset) {
       return; // No-op.
     }
@@ -642,7 +712,7 @@ function makeGUI() {
       flControls.style("display", "none");
       flAdvanced.style("display", "none");
     }
-    
+    flAllocationLocked = false; // FL on/off may change topology
     parametersChanged = true;
     userHasInteracted();
   });
@@ -651,7 +721,7 @@ function makeGUI() {
   d3.select("#fl-advanced-toggle").on("change", function() {
     const flAdvanced = d3.select(".fl-advanced-controls");
     const flCluster = d3.select(".fl-cluster-controls");
-    
+    flAllocationLocked = false;
     if (this.checked) {
       flAdvanced.style("display", "block");
       flCluster.style("display", "block");
@@ -1223,6 +1293,8 @@ function constructInput(x: number, y: number): number[] {
 
 
 function rebuildFLClientsIfNeeded(cfg: FLConfig): void {
+  // If locked and we already have clients, keep the existing allocation.
+  if (flAllocationLocked && flClients) return;
   // Rebuild when seed changes or partition knobs change.
   var sig = state.seed + "|" + cfg.numClients + "|" + state.batchSize + "|" + cfg.iidAlpha + "|" + state.problem;
   if (flClients && flLastSeed === state.seed && flLastSig === sig) return;
@@ -1310,6 +1382,12 @@ function ensureClusterState(cfg: FLConfig): void {
       flClusterWeights.push(w);
     }
   }
+  // If the model was just reset (iter === 0), sync cluster weights to the fresh network
+  if (iter === 0 && flClusterWeights) {
+    for (let c = 0; c < flClusterWeights.length; c++) {
+      flClusterWeights[c].set(base);
+    }
+  }
   if (flClientCluster.length !== flClients.length) {
     var a = new Array(flClients.length);
     for (var i = 0; i < a.length; i++) a[i] = 0;
@@ -1339,9 +1417,13 @@ function averageClusterWeightsBySize(): Float32Array {
   }
   return out;
 }
-
+// ...existing code...
 function reclusterIfNeeded(cfg: FLConfig): void {
   if (!cfg.clusteringEnabled || (cfg.numClusters || 1) <= 1) return;
+  
+  // Allow initial clustering even if locked (when no deltas exist yet)
+  const hasAnyDeltas = flLastClientDelta.some(d => d !== null);
+  // if (flAllocationLocked && hasAnyDeltas)   
   if (flRoundsSinceCluster < (cfg.reclusterEvery || 5)) return;
   if ((iter + 1) < (cfg.warmupRounds || 0)) return;
 
@@ -1356,7 +1438,15 @@ function reclusterIfNeeded(cfg: FLConfig): void {
       owners.push(i);
     }
   }
-  if (vectors.length === 0) { flRoundsSinceCluster = 0; return; }
+  
+  // If no deltas yet, do random initial assignment
+  if (vectors.length === 0) { 
+    for (let i = 0; i < flClientCluster.length; i++) {
+      flClientCluster[i] = Math.floor(Math.random() * K);
+    }
+    flRoundsSinceCluster = 0; 
+    return; 
+  }
 
   const {assignments, centroids} = kMeans(vectors, Math.min(K, vectors.length), (cfg.similarityMetric || "cosine") as any, 20, 42);
 
@@ -1367,7 +1457,7 @@ function reclusterIfNeeded(cfg: FLConfig): void {
   }
   // If kMeans returned fewer centroids (vectors < K), extend by duplicating nearest
   while (centroids.length < K) centroids.push(centroids[centroids.length - 1]);
-
+ 
   for (let i = 0; i < newAssign.length; i++) {
     if (owners.indexOf(i) !== -1) continue;
     const v = flLastClientDelta[i];
@@ -1392,8 +1482,6 @@ function reclusterIfNeeded(cfg: FLConfig): void {
   flClientCluster = newAssign;
   flRoundsSinceCluster = 0;
 }
-
-// ...existing code...
 
 function initFLCharts() {
   if (!isFLEnabled()) return;
@@ -1675,6 +1763,7 @@ function oneStepFL(): void {
     flRoundsSinceCluster++;
     reclusterIfNeeded(cfg);
     updateUI();
+    renderClientAllocation(cfg, roundClients.map(c => c.id));
     return;
   }
 
@@ -1985,6 +2074,7 @@ export function getOutputWeights(network: nn.Node[][]): number[] {
 }
 function reset(onStartup=false) {
   lineChart.reset();
+  flAllocationLocked = false;
   
   // Reset FL charts - FIXED
   if (isFLEnabled()) {
@@ -2036,6 +2126,100 @@ function reset(onStartup=false) {
   lossTest = getLoss(network, testData);
   drawNetwork(network);
   updateUI(true);
+  renderClientAllocation();
+}
+
+// Renders small-multiples showing each client’s data; shown only if FL+clustering are on.
+// ...existing code...
+// Renders small-multiples showing each client’s data; shown only if FL+clustering are on.
+function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []): void {
+  const section = d3.select("#client-allocation-section");
+  const container = d3.select("#client-allocation");
+  if (section.empty() || container.empty()) return;
+
+  const show = isFLEnabled();
+  section.style("display", show ? "block" : "none");
+  if (!show) { container.selectAll("*").remove(); return; }
+
+  // Ensure clients and cluster state exist.
+  cfg = cfg || readFLConfig();
+  rebuildFLClientsIfNeeded(cfg);
+
+  const clusteringEnabled = getElChecked("fl-clustered");
+  if (clusteringEnabled) {
+    ensureClusterState(cfg);
+  }
+
+  container.selectAll("*").remove();
+
+  // Cluster color palette.
+  const clusterColor = d3.scale.category10();
+  const w = 100, h = 100;
+  const active = new Set<number>(activeClientIds || []);
+
+  // Build per-client flattened points.
+  for (let c = 0; c < flClients.length; c++) {
+    const client = flClients[c];
+    const cid = clusteringEnabled ? 
+      Math.max(0, Math.min((flClientCluster[c] || 0), (cfg.numClusters || 1) - 1)) : 
+      0;
+    const isActive = active.has(client.id);
+
+    const wrap = container.append("div").style({
+      display: "inline-block",
+      border: `2px solid ${clusterColor(cid.toString())}`,
+      borderRadius: "4px",
+      padding: "4px",
+      width: `${w + 8}px`,
+      transition: "box-shadow 150ms ease, border-width 150ms ease"
+    });
+
+    // Pulse highlight for active clients this round
+    if (isActive) {
+      wrap.style({
+        borderWidth: "4px",
+        boxShadow: `0 0 8px ${clusterColor(cid.toString())}`
+      });
+      setTimeout(() => {
+        wrap.style({ borderWidth: "2px", boxShadow: "none" });
+      }, 180);
+    }
+
+    const canvas = wrap.append("canvas")
+      .attr("width", w)
+      .attr("height", h)
+      .node() as HTMLCanvasElement;
+    const ctx = canvas.getContext("2d");
+
+    // Draw client’s points.
+    // Domain is [-6,6] for both x and y, same as heatmap.
+    const toX = (x: number) => (w * (x + 6) / 12);
+    const toY = (y: number) => (h * (6 - y) / 12);
+
+    // Flatten batches.
+    let count = 0;
+    for (let b = 0; b < client.batches.length; b++) {
+      const batch = client.batches[b];
+      for (let t = 0; t < batch.x.length; t++) {
+        const xy = batch.x[t];
+        const label = batch.y[t] > 0 ? 1 : -1;
+        ctx.fillStyle = colorScale(label).toString();
+        ctx.fillRect(toX(xy[0]), toY(xy[1]), 3, 3);
+        count++;
+      }
+    }
+    // Label: client id and cluster.
+    const labelText = clusteringEnabled ? 
+      `Client ${client.id} · K${cid} · ${count}` : 
+      `Client ${client.id} · ${count}`;
+    
+    wrap.append("div").style({
+      fontSize: "11px",
+      textAlign: "center",
+      marginTop: "4px",
+      color: "#555"
+    }).text(`Client ${client.id} · K${cid} · ${count}`);
+  }
 }
 
 function initTutorial() {
@@ -2162,6 +2346,8 @@ function generateData(firstTime = false) {
   heatMap.updateTestPoints(state.showTestData ? testData : []);
 
   flClients = null;
+  flAllocationLocked = false; // new data -> allow rebuilding/allocation
+
 }
 
 let firstInteraction = true;
