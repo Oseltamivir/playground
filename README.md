@@ -19,7 +19,7 @@ The changes made include the addition of federated learning (FL) capabilities, a
 
 6. New UI and Visualizations: The UI expanded to include controls for FL parameters and new charts to visualize FL-specific metrics like client participation, communication cost, and loss distribution.
 
-All modifications are done on top of TensorFlow's work, if "Enable FL" is not checked, the original TensorFlow functionality remains.
+All modifications are done on top of TensorFlow's work, if "Enable FL" is not checked, the original TensorFlow functionality remains. More info on the controls and visualizations can be found on the playground itself.
 
 ---
 # Deep playground

@@ -1,17 +1,3 @@
-/* Copyright 2016 Google Inc. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-==============================================================================*/
 
 /* General Type */
 
@@ -56,7 +42,7 @@ body {
 }
 
 .l--body {
-  width: 550px;
+  width: 800px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -1028,82 +1014,9 @@ footer .links a:hover {
 
 /* ------------------------------------------------------------------ */
 /* Top-controls layout: aligned 4-row FL UI with compact checkboxes   */
-/* (moved from inline <style> and expanded)                            */
 /* ------------------------------------------------------------------ */
 
-/* Let the top bar wrap to new lines */
-#top-controls .container{
-  display:flex;             /* already flex; ok to repeat */
-  flex-wrap:wrap;
-  align-items:flex-end;
-  row-gap: var(--row-gap);
-}
-
-/* Put each FL section on its own full-width row */
-#top-controls .fl-controls,
-#top-controls .fl-advanced-controls,
-#top-controls .fl-cluster-controls{
-  flex:0 0 100%;
-  width:100%;
-}
-
-/* Keep the Enable-FL checkbox compact on row 1 */
-#top-controls .ui-fl-enabled{
-  flex:0 0 auto;
-}
-
-#top-controls .fl-cluster-controls {
-  border-top: 1px solid #ddd;
-  padding-top: 4px; /* Reduce from default padding */
-  margin-top: 0px; /* Remove any top margin */
-}
-
-#top-controls .fl-cluster-controls .fl-controls-row {
-  margin-top: 0px;
-  padding-top: 4px;
-}
-
-/* Faint separators after row 1 and row 3 */
-#top-controls .fl-controls{
-  border-top: 1px solid var(--sep-color);  /* line after non-FL row */
-  padding-top: 4px;
-}
-#top-controls .fl-cluster-controls{
-  border-top: 1px solid var(--sep-color);  /* line after advanced row */
-  padding-top: 4px;
-  margin-top: 2px;
-}
-
-/* Shared grid for rows 2–4 so columns line up across rows:
-   [lead fixed] [three slider cols] [extra slider col] [small auto slot] */
-#top-controls .fl-grid{
-  display: grid;
-  grid-template-columns: var(--lead-col) 1fr 1fr 1fr 1fr auto;
-  gap: 12px var(--col-gap);
-  align-items: end;
-}
-
-/* Lead column controls */
-#top-controls .ui-fl-lead{
-  width: var(--lead-col);
-}
-
-/* Controls inside the grid can shrink/expand fluidly */
-#top-controls .fl-grid .control{
-  min-width: 0;
-  max-width: none;
-}
-
-/* Historical row style (used by non-grid rows) */
-#top-controls .fl-controls-row{
-  display:flex;
-  flex-wrap:wrap;
-  gap:12px 18px;
-  align-items:flex-end;
-}
-
-
-:root{
+:root {
   --sep-color: rgba(0,0,0,0.08);
   --col-gap: 20px;
   --row-gap: 20px;
@@ -1111,31 +1024,26 @@ footer .links a:hover {
   --slider-col: 1fr;
 }
 
-#top-controls .fl-advanced-controls + .fl-cluster-controls {
-  /* Keep a small final gap (6px). Tweak 6px as needed. */
-  margin-top: calc(-1 * var(--row-gap, 10px) + 6px) !important;
-}
-
 /* Let the top bar wrap to new lines */
-#top-controls .container{
-  display:flex;
-  flex-wrap:wrap;
-  align-items:flex-end;
+#top-controls .container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
   row-gap: var(--row-gap);
 }
 
 /* Put each FL section on its own full-width row */
 #top-controls .fl-controls,
 #top-controls .fl-advanced-controls,
-#top-controls .fl-cluster-controls{
-  flex:0 0 100%;
-  width:100%;
+#top-controls .fl-cluster-controls {
+  flex: 0 0 100%;
+  width: 100%;
   margin: 0; /* Reset margins to rely on gap */
 }
 
 /* Keep the Enable-FL checkbox compact on row 1 */
-#top-controls .ui-fl-enabled{
-  flex:0 0 auto;
+#top-controls .ui-fl-enabled {
+  flex: 0 0 auto;
 }
 
 /* Faint separators for FL sections */
@@ -1145,19 +1053,18 @@ footer .links a:hover {
   padding-top: 10px; /* Add some padding above the controls within the row */
 }
 
+#top-controls .fl-advanced-controls + .fl-cluster-controls {
+  /* Keep a small final gap (6px). Tweak 6px as needed. */
+  margin-top: calc(-1 * var(--row-gap, 10px) + 6px) !important;
+}
+
 /* Shared grid for rows 2–4 so columns line up across rows:
    [lead fixed] [four equal slider cols] [small auto slot] */
-#top-controls .fl-grid{
+#top-controls .fl-grid {
   display: grid;
   grid-template-columns: var(--lead-col) var(--slider-col) var(--slider-col) var(--slider-col) var(--slider-col) auto;
   gap: 10px var(--col-gap);
   align-items: end;
-}
-
-/* Ensure all slider inputs have consistent width */
-#top-controls .fl-grid .control .slider input[type="range"] {
-  width: 100%; /* Fill the grid column completely */
-  min-width: 120px; /* Set minimum width for consistency */
 }
 
 /* Make sure control containers don't override the grid sizing */
@@ -1166,40 +1073,45 @@ footer .links a:hover {
   flex: none; /* Don't use flex sizing */
 }
 
+/* Ensure all slider inputs have consistent width */
+#top-controls .fl-grid .control .slider input[type="range"] {
+  width: 100%; /* Fill the grid column completely */
+  min-width: 120px; /* Set minimum width for consistency */
+}
+
 /* Make the lead column checkboxes more compact */
 #top-controls .ui-fl-checks .mdl-checkbox__label,
-#top-controls .ui-fl-clustered-group .mdl-checkbox__label{
+#top-controls .ui-fl-clustered-group .mdl-checkbox__label {
   font-size: 12px;
   line-height: 1.1;
   padding-left: 20px; /* Reduce checkbox spacing */
 }
 
 /* Compact the clustered FL group */
-#top-controls .ui-fl-clustered-group{
-  display:flex;
-  flex-direction:column;
-  gap:3px; /* Reduced from 8px */
+#top-controls .ui-fl-clustered-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px; /* Reduced from 8px */
 }
 
-#top-controls .ui-fl-clustered-group .stacked-label{
-  color:#777;
-  font-size:11px;
-  margin-top:0;
-  margin-bottom:3px;
+#top-controls .ui-fl-clustered-group .stacked-label {
+  color: #777;
+  font-size: 11px;
+  margin-top: 0;
+  margin-bottom: 3px;
 }
 
-#top-controls .ui-fl-clustered-group .select{
-  margin-top:2px;
+#top-controls .ui-fl-clustered-group .select {
+  margin-top: 2px;
 }
 
-/* ...existing code... */
 /* Right-side "Show advanced" checkbox fits tiny auto column neatly */
-#top-controls .ui-fl-adv-toggle{
+#top-controls .ui-fl-adv-toggle {
   align-self: end;
 }
 
 /* Hide any legacy standalone Similarity control if present elsewhere */
-#top-controls .ui-fl-similarity{ display:none; }
+#top-controls .ui-fl-similarity { display: none; }
 
 /* If JS switches to class-based toggling, keep a helper ready */
-#top-controls .fl-advanced-controls.open{ display:block !important; }
+#top-controls .fl-advanced-controls.open { display: block !important; }

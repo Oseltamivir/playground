@@ -157,7 +157,7 @@ limitations under the License.
         </label>
       </div>
 
-      <!-- Row 2: General FL controls (full-width, under faint line) -->
+      <!-- Row 2: General FL controls -->
       <div class="fl-controls" style="display: none;">
         <div class="fl-controls-row fl-grid">
           <!-- Lead column (fixed width across rows) -->
@@ -172,8 +172,7 @@ limitations under the License.
               </select>
             </div>
           </div>
-
-          <!-- Three aligned slider columns + one extra slider slot -->
+          <!-- Three "aligned" columns -->
           <div class="control ui-fl-numClients">
             <label for="fl-numClients">Clients:&nbsp;<span class="value" id="fl-numClients-val"></span></label>
             <p class="slider">
@@ -211,11 +210,9 @@ limitations under the License.
           </div>
         </div>
       </div>
-
-      <!-- Row 3: Advanced FL controls (aligned; DP + Weight stacked in lead column) -->
+      <!-- Row 3: Advanced FL controls -->
       <div class="fl-advanced-controls" style="display: none;">
         <div class="fl-controls-row fl-grid">
-          <!-- Lead column (stacked checkboxes under the Algorithm column) -->
           <div class="control ui-fl-lead ui-fl-checks">
             <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-clientLevelDp">
               <input type="checkbox" id="fl-clientLevelDp" class="mdl-checkbox__input">
@@ -226,7 +223,7 @@ limitations under the License.
               <span class="mdl-checkbox__label">Weight by size</span>
             </label>
           </div>
-          <!-- Three aligned sliders -->
+          <!-- Three "aligned" sliders -->
           <div class="control ui-fl-clientLR">
             <label for="fl-clientLR">Client LR:&nbsp;<span class="value" id="fl-clientLR-val"></span></label>
             <p class="slider">
@@ -271,10 +268,9 @@ limitations under the License.
         </div>
       </div> 
 
-      <!-- Row 4: Clustered FL (line above; lead column stacks Clustered FL + Similarity) -->
+      <!-- Row 4: Clustered FL -->
       <div class="fl-cluster-controls" style="display: none;">
         <div class="fl-controls-row fl-grid">
-          <!-- Lead column -->
           <div class="control ui-fl-lead ui-fl-clustered-group">
             <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-clustered">
               <input type="checkbox" id="fl-clustered" class="mdl-checkbox__input">
@@ -289,8 +285,7 @@ limitations under the License.
               </select>
             </div>
           </div>
-
-          <!-- Three aligned sliders -->
+          <!-- Three "aligned" sliders -->
           <div class="control ui-fl-numClusters">
             <label for="fl-numClusters">Clusters K:&nbsp;<span class="value" id="fl-numClusters-val"></span></label>
             <p class="slider">
@@ -311,22 +306,14 @@ limitations under the License.
               <input class="mdl-slider mdl-js-slider" type="range" id="fl-warmupRounds" min="0" max="10" step="1" value="1">
             </p>
           </div>
-
-          <!-- Extra slider slot kept for column symmetry -->
           <div class="control"></div>
-
-          <!-- Tiny slot (auto col) left empty -->
           <div class="control"></div>
         </div>
       </div>
-
     </div>
   </div>
-
   <!-- Main Part -->
-
   <div id="main-part" class="l--page">
-
     <!--  Data Column-->
     <div id="data-column" class="column data">
       <h4>
@@ -495,30 +482,29 @@ limitations under the License.
       </div>
     </div>
 
-        <div class="column fl-metrics">
-      <div id="fl-metrics-container" style="display: none;">
-        <div class="fl-metrics-column">
-          <div class="fl-chart">
-            <h6>Client Participation</h6>
-            <div id="participation-chart"></div>
-          </div>
-          <div class="fl-chart">
-            <h6>Communication Cost</h6>
-            <div id="comm-chart"></div>
-          </div>
-          <div class="fl-chart">
-            <h6>Client Loss Distribution</h6>
-            <div id="client-loss-chart"></div>
-          </div>
-          <div class="fl-chart">
-            <h6>Convergence Rate</h6>
-            <div id="convergence-chart"></div>
+  <div class="column fl-metrics">
+    <div id="fl-metrics-container" style="display: none;">
+      <div class="fl-metrics-column">
+        <div class="fl-chart">
+          <h6>Client Participation</h6>
+          <div id="participation-chart"></div>
+        </div>
+        <div class="fl-chart">
+          <h6>Communication Cost</h6>
+          <div id="comm-chart"></div>
+        </div>
+        <div class="fl-chart">
+          <h6>Client Loss Distribution</h6>
+          <div id="client-loss-chart"></div>
+        </div>
+        <div class="fl-chart">
+          <h6>Convergence Rate</h6>
+          <div id="convergence-chart"></div>
+        </div>
           </div>
         </div>
       </div>
     </div>
-
-  </div>
 
   <!-- Client Allocation (shown when FL + clustering are enabled) -->
   <div id="client-allocation-section" class="l--page" style="display:none; margin-top: 16px; margin-bottom: 8px;">
@@ -530,131 +516,153 @@ limitations under the License.
     <div class="l--body">
       <h2>Federated Learning Parameters Guide</h2>
       <p>This playground supports several federated learning algorithms with extensive hyperparameter control. Below is a comprehensive guide to all available parameters:</p>
+      <!-- 2x2 Grid of Parameter Tables -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 20px 0;">
+        <!-- Top Left: Core FL Settings -->
+        <div>
+          <h3 style="margin-top: 0; border-bottom: 2px solid #0877bd; padding-bottom: 5px;">Core FL Settings</h3>
+          <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; font-size: 13px; background: #f9f9f9; padding: 15px; border-radius: 5px;">
+            <div style="font-weight: bold;">Parameter</div>
+            <div style="font-weight: bold;">Description</div>
+            <div style="font-weight: bold;">Range</div>
+            
+            <div><strong>Algorithm</strong></div>
+            <div>FL optimization algorithm: FedAvg (standard), FedProx (proximal), FedAdam (server-side Adam), SCAFFOLD (variance reduction)</div>
+            <div>Dropdown</div>
+            
+            <div><strong>Clients</strong></div>
+            <div>Total number of participating clients in the federation</div>
+            <div>2-54</div>
+            
+            <div><strong>Client Fraction</strong></div>
+            <div>Fraction of clients selected per round (C parameter)</div>
+            <div>0.05-1.0</div>
+            
+            <div><strong>Local Epochs</strong></div>
+            <div>Number of local training epochs per client per round (E parameter)</div>
+            <div>1-10</div>
+            
+            <div><strong>Non-IID α</strong></div>
+            <div>Dirichlet distribution parameter controlling data heterogeneity. Higher values = more IID, lower = more heterogeneous</div>
+            <div>1.0-100</div>
+          </div>
+        </div>
+
+        <!-- Top Right: Advanced Settings -->
+        <div>
+          <h3 style="margin-top: 0; border-bottom: 2px solid #f59322; padding-bottom: 5px;">Advanced Settings</h3>
+          <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; font-size: 13px; background: #f9f9f9; padding: 15px; border-radius: 5px;">
+            <div style="font-weight: bold;">Parameter</div>
+            <div style="font-weight: bold;">Description</div>
+            <div style="font-weight: bold;">Range</div>
+            
+            <div><strong>Client LR</strong></div>
+            <div>Local learning rate for client-side SGD optimization</div>
+            <div>0.001-0.2</div>
+            
+            <div><strong>Dropout</strong></div>
+            <div>Probability that a selected client silently drops out (communication failure simulation)</div>
+            <div>0.0-0.9</div>
+            
+            <div><strong>Weight by size</strong></div>
+            <div>Use weighted aggregation based on client dataset sizes (|D_k|)</div>
+            <div>Checkbox</div>
+            
+            <div><strong>μ (FedProx)</strong></div>
+            <div>Proximal term strength for FedProx algorithm. Adds μ||w - w₀||² penalty to local objectives</div>
+            <div>0.0-1.0</div>
+            
+            <div><strong>Server LR (FedAdam)</strong></div>
+            <div>Server-side learning rate for FedAdam optimizer</div>
+            <div>0.001-0.1</div>
+          </div>
+        </div>
+
+        <!-- Bottom Left: Differential Privacy -->
+        <div>
+          <h3 style="margin-top: 0; border-bottom: 2px solid #9C27B0; padding-bottom: 5px;">Differential Privacy</h3>
+          <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; font-size: 13px; background: #f9f9f9; padding: 15px; border-radius: 5px;">
+            <div style="font-weight: bold;">Parameter</div>
+            <div style="font-weight: bold;">Description</div>
+            <div style="font-weight: bold;">Range</div>
+            
+            <div><strong>Diff. Privacy</strong></div>
+            <div>Enable client-level differential privacy (vs server-level when unchecked)</div>
+            <div>Checkbox</div>
+            
+            <div><strong>DP Clip</strong></div>
+            <div>L2 norm clipping threshold for gradient/update vectors</div>
+            <div>0.0-10.0</div>
+            
+            <div><strong>DP σ</strong></div>
+            <div>Gaussian noise multiplier. Effective noise = σ × clip_norm</div>
+            <div>0.0-2.0</div>
+          </div>
+        </div>
+
+        <!-- Bottom Right: Clustered Federated Learning -->
+        <div>
+          <h3 style="margin-top: 0; border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Clustered Federated Learning</h3>
+          <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; font-size: 13px; background: #f9f9f9; padding: 15px; border-radius: 5px;">
+            <div style="font-weight: bold;">Parameter</div>
+            <div style="font-weight: bold;">Description</div>
+            <div style="font-weight: bold;">Range</div>
+            
+            <div><strong>Clustered FL</strong></div>
+            <div>Enable clustering clients into groups with separate models</div>
+            <div>Checkbox</div>
+            
+            <div><strong>Similarity Metric</strong></div>
+            <div>Distance metric for clustering: Cosine similarity or L2 distance</div>
+            <div>Dropdown</div>
+            
+            <div><strong>Clusters K</strong></div>
+            <div>Number of client clusters (separate models)</div>
+            <div>1-8</div>
+            
+            <div><strong>Recluster Every</strong></div>
+            <div>Frequency of reclustering clients (in rounds)</div>
+            <div>1-20</div>
+            
+            <div><strong>Warmup Rounds</strong></div>
+            <div>Initial rounds before first clustering operation</div>
+            <div>0-10</div>
+          </div>
+        </div>
+      </div>
+      <!-- Charts legend -->
+      <h3>Federated Learning Charts</h3>
+      <p>When FL is enabled, four real-time charts track key metrics during training:</p>
       
-      <h3>Core FL Settings</h3>
-      <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 15px; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px;">
-        <div style="font-weight: bold;">Parameter</div>
-        <div style="font-weight: bold;">Description</div>
-        <div style="font-weight: bold;">Range</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 20px 0;">
+        <div style="padding: 15px; background: #f9f9f9; border-radius: 5px;">
+          <h3 style="margin-top: 0; color: #333;">Client Participation</h3>
+          <p><strong>Blue line:</strong> Percentage of total clients selected per round (Client Fraction × 100)</p>
+          <p><strong>Green line:</strong> Percentage of selected clients that actually participated (After dropout)</p>
+          <p><em>Higher participation generally leads to better convergence but increases communication costs.</em></p>
+        </div>
         
-        <div><strong>Algorithm</strong></div>
-        <div>FL optimization algorithm: FedAvg (standard), FedProx (proximal), FedAdam (server-side Adam), SCAFFOLD (variance reduction)</div>
-        <div>Dropdown</div>
+        <div style="padding: 15px; background: #f9f9f9; border-radius: 5px;">
+          <h3 style="margin-top: 0; color: #333;">Communication Cost</h3>
+          <p><strong>Orange line:</strong> Total communication overhead per round in KB</p>
+          <p>Includes model weights sent to clients and updates sent back to server. In clustered FL, includes per-cluster model synchronization.</p>
+          <p><em>Trade-off: More parameters = better expressivity but higher communication costs.</em></p>
+        </div>
         
-        <div><strong>Clients</strong></div>
-        <div>Total number of participating clients in the federation</div>
-        <div>2-54</div>
+        <div style="padding: 15px; background: #f9f9f9; border-radius: 5px;">
+          <h3 style="margin-top: 0; color: #333;">Client Loss Distribution</h3>
+          <p><strong>Red line:</strong> Maximum loss across all participating clients</p>
+          <p><strong>Purple line:</strong> Average loss across all participating clients</p>
+          <p><strong>Blue-grey line:</strong> Minimum loss across all participating clients</p>
+          <p><em>Large spread indicates unfairness - some clients perform much worse than others.</em></p>
+        </div>
         
-        <div><strong>Client Fraction</strong></div>
-        <div>Fraction of clients selected per round (C parameter)</div>
-        <div>0.05-1.0</div>
-        
-        <div><strong>Local Epochs</strong></div>
-        <div>Number of local training epochs per client per round (E parameter)</div>
-        <div>1-10</div>
-        
-        <div><strong>Non-IID α</strong></div>
-        <div>Dirichlet distribution parameter controlling data heterogeneity. Higher values = more IID, lower = more heterogeneous</div>
-        <div>1.0-100</div>
-      </div>
-
-      <h3>Advanced Settings</h3>
-      <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 15px; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px;">
-        <div style="font-weight: bold;">Parameter</div>
-        <div style="font-weight: bold;">Description</div>
-        <div style="font-weight: bold;">Range</div>
-        
-        <div><strong>Client LR</strong></div>
-        <div>Local learning rate for client-side SGD optimization</div>
-        <div>0.001-0.2</div>
-        
-        <div><strong>Dropout</strong></div>
-        <div>Probability that a selected client silently drops out (communication failure simulation)</div>
-        <div>0.0-0.9</div>
-        
-        <div><strong>Weight by size</strong></div>
-        <div>Use weighted aggregation based on client dataset sizes (|D_k|)</div>
-        <div>Checkbox</div>
-        
-        <div><strong>μ (FedProx)</strong></div>
-        <div>Proximal term strength for FedProx algorithm. Adds μ||w - w₀||² penalty to local objectives</div>
-        <div>0.0-1.0</div>
-        
-        <div><strong>Server LR (FedAdam)</strong></div>
-        <div>Server-side learning rate for FedAdam optimizer</div>
-        <div>0.001-0.1</div>
-      </div>
-
-      <h3>Differential Privacy</h3>
-      <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 15px; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px;">
-        <div style="font-weight: bold;">Parameter</div>
-        <div style="font-weight: bold;">Description</div>
-        <div style="font-weight: bold;">Range</div>
-        
-        <div><strong>Diff. Privacy</strong></div>
-        <div>Enable client-level differential privacy (vs server-level when unchecked)</div>
-        <div>Checkbox</div>
-        
-        <div><strong>DP Clip</strong></div>
-        <div>L2 norm clipping threshold for gradient/update vectors</div>
-        <div>0.0-10.0</div>
-        
-        <div><strong>DP σ</strong></div>
-        <div>Gaussian noise multiplier. Effective noise = σ × clip_norm</div>
-        <div>0.0-2.0</div>
-      </div>
-
-      <h3>Clustered Federated Learning</h3>
-      <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 15px; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px;">
-        <div style="font-weight: bold;">Parameter</div>
-        <div style="font-weight: bold;">Description</div>
-        <div style="font-weight: bold;">Range</div>
-        
-        <div><strong>Clustered FL</strong></div>
-        <div>Enable clustering clients into groups with separate models</div>
-        <div>Checkbox</div>
-        
-        <div><strong>Similarity Metric</strong></div>
-        <div>Distance metric for clustering: Cosine similarity or L2 distance</div>
-        <div>Dropdown</div>
-        
-        <div><strong>Clusters K</strong></div>
-        <div>Number of client clusters (separate models)</div>
-        <div>1-8</div>
-        
-        <div><strong>Recluster Every</strong></div>
-        <div>Frequency of reclustering clients (in rounds)</div>
-        <div>1-20</div>
-        
-        <div><strong>Warmup Rounds</strong></div>
-        <div>Initial rounds before first clustering operation</div>
-        <div>0-10</div>
-      </div>
-      <h3>UI Controls and Buttons</h3>
-      <div style="display: grid; grid-template-columns: 1fr 3fr; gap: 15px; margin: 20px 0; padding: 15px; background: #f9f9f9; border-radius: 5px;">
-        <div style="font-weight: bold;">Button/Control</div>
-        <div style="font-weight: bold;">Description</div>
-
-        <div><strong>Play/Pause</strong> (▶/❚❚)</div>
-        <div>Starts or pauses the continuous training process.</div>
-
-        <div><strong>Step</strong> (►|)</div>
-        <div>Executes a single training step (one epoch or one federated round), allowing for granular inspection of the learning process.</div>
-
-        <div><strong>Reset Network</strong> (↻)</div>
-        <div>Resets all network weights, biases, and training progress (epoch count, loss graphs). The dataset remains the same.</div>
-
-        <div><strong>Regenerate Data</strong></div>
-        <div>Creates a new random dataset based on the current settings and resets the model.</div>
-
-        <div><strong>Reset Model</strong></div>
-        <div>Resets only the model's weights and biases, preserving the current dataset. Useful for re-running training on the exact same data.</div>
-
-        <div><strong>+/- Hidden Layers</strong></div>
-        <div>Adds or removes entire hidden layers from the network architecture.</div>
-
-        <div><strong>+/- Neurons</strong></div>
-        <div>Adjusts the number of neurons within a specific hidden layer. These controls appear between the layers.</div>
+        <div style="padding: 15px; background: #f9f9f9; border-radius: 5px;">
+          <h3 style="margin-top: 0; color: #333;">Convergence Rate</h3>
+          <p><strong>Brown line:</strong> Rate of training loss improvement per round</p>
+          <p>Calculated as: (previous_loss - current_loss) / previous_loss</p>
+          <p><em>Higher values indicate faster learning. Rate typically decreases as training progresses and approaches optimum.</em></p>
+        </div>
       </div>
     </div>
 
@@ -669,6 +677,8 @@ limitations under the License.
       method will incorrectly split up clients in the conventional
       congruent non-iid setting.</p>
     </div>
+
+    <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;">
     
     <div class="l--body">
       <h2>Um, What Is a Neural Network?</h2>

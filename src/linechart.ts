@@ -35,7 +35,6 @@ function movingAverage(data: number[], window: number): number[] {
  * A multi-series line chart that allows you to append new data points
  * as data becomes available.
  */
-/* ...existing code... */
 export class AppendingLineChart {
   private numLines: number;
   private data: DataPoint[] = [];

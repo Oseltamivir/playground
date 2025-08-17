@@ -1370,7 +1370,6 @@ function nnSetWeights(w: Weights): void {
 
 
 // Helpers for clustered FL
-// ...existing code...
 function ensureClusterState(cfg: FLConfig): void {
   const K = Math.max(1, cfg.numClusters || 1);
   const base = nnFlattenWeights();
@@ -1417,7 +1416,7 @@ function averageClusterWeightsBySize(): Float32Array {
   }
   return out;
 }
-// ...existing code...
+
 function reclusterIfNeeded(cfg: FLConfig): void {
   if (!cfg.clusteringEnabled || (cfg.numClusters || 1) <= 1) return;
   
@@ -1517,7 +1516,6 @@ function initFLCharts() {
   );
 }
 
-// ...existing code...
 function updateFLCharts() {
   if (!isFLEnabled() || Object.keys(flCharts).length === 0) return;
   
@@ -1553,7 +1551,7 @@ function oneStep(): void {
     oneStepSGD();
   }
 }
-// ...existing code...
+
 function oneStepFL(): void {
   var cfg = readFLConfig();
   if (flLastAlgo !== cfg.algo) { 
@@ -2129,8 +2127,6 @@ function reset(onStartup=false) {
   renderClientAllocation();
 }
 
-// Renders small-multiples showing each client’s data; shown only if FL+clustering are on.
-// ...existing code...
 // Renders small-multiples showing each client’s data; shown only if FL+clustering are on.
 function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []): void {
   const section = d3.select("#client-allocation-section");
