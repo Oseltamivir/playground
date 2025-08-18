@@ -42,6 +42,7 @@ let flLastSig = "";
 let flServerAdam: ServerAdam = null;
 let flLastAlgo = "";
 
+
 // SCAFFOLD state
 let flScaffoldC: Float32Array|null = null;          // server control variate c
 let flScaffoldCi: (Float32Array|null)[] = [];       // per-client control variates c_i
@@ -54,7 +55,6 @@ let flClusterCount = 1;
 let flRoundsSinceCluster = 0;
 let flAllocationLocked: boolean = false;
 
-// Add after existing global variables
 let flMetrics = {
   participationRates: [],
   commCosts: [],
@@ -63,6 +63,8 @@ let flMetrics = {
   fairnessMetrics: [],
   dpPrivacyBudget: 0
 };
+let flClientLossHistory: {clientId: number, loss: number}[] = [];
+
 
 let flCharts: {[key: string]: AppendingLineChart} = {};
 
@@ -206,9 +208,10 @@ let testData: Example2D[] = [];
 let network: nn.Node[][] = null;
 let lossTrain = 0;
 let lossTest = 0;
+let accTest = 0;
 let player = new Player();
 let lineChart = new AppendingLineChart(d3.select("#linechart"),
-    ["#777", "black"]);
+    ["#777", "black", "#b71c1c"], { secondarySeries: [2], y2Domain: [0, 1] });
 
 function getElNum(id: string, def: number): number {
   var el = document.getElementById(id) as HTMLInputElement;
@@ -317,6 +320,7 @@ function resetModel() {
   // Recalculate losses with the reset network and existing data
   lossTrain = getLoss(network, trainData);
   lossTest = getLoss(network, testData);
+  accTest  = getAccuracy(network, testData);
   
   drawNetwork(network);
   updateUI(true);
@@ -329,9 +333,11 @@ function makeGUI() {
     const flAdvanced = d3.select(".fl-advanced-controls");
     const flCluster = d3.select(".fl-cluster-controls");
     const flMetrics = d3.select("#fl-metrics-container");
+    const flDisclaimer = d3.select("#fl-disclaimer"); 
     
     if (this.checked) {
       flControls.style("display", "block");
+      flDisclaimer.style("display", "block");
       initFLCharts();
 
       // Show advanced and cluster controls if advanced toggle is checked
@@ -345,7 +351,8 @@ function makeGUI() {
       flAdvanced.style("display", "none");
       flCluster.style("display", "none");
       flMetrics.style("display", "none");
-    }
+      flDisclaimer.style("display", "none"); // Hide disclaimer
+  }
     
     parametersChanged = true;
     userHasInteracted();
@@ -403,6 +410,24 @@ function makeGUI() {
     // Change the button's content.
     userHasInteracted();
     player.playOrPause();
+  });
+
+  d3.select(document).on("keydown", function() {
+    // Check if spacebar (keyCode 32 or key ' ') was pressed
+    const event = d3.event as KeyboardEvent;
+    if (event.keyCode === 32 || event.key === ' ') {
+      // Prevent default spacebar behavior (page scrolling)
+      event.preventDefault();
+      
+      // Only trigger if no input field is focused (to avoid interfering with text input)
+      const activeElement = document.activeElement;
+      if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'SELECT' || activeElement.tagName === 'TEXTAREA')) {
+        return;
+      }
+      
+      userHasInteracted();
+      player.playOrPause();
+    }
   });
 
   player.onPlayPause(isPlaying => {
@@ -1233,6 +1258,19 @@ function getLoss(network: nn.Node[][], dataPoints: Example2D[]): number {
   return loss / dataPoints.length;
 }
 
+function getAccuracy(network: nn.Node[][], dataPoints: Example2D[]): number {
+  if (!dataPoints || dataPoints.length === 0) return 0;
+  let correct = 0;
+  for (let i = 0; i < dataPoints.length; i++) {
+    const dp = dataPoints[i];
+    const input = constructInput(dp.x, dp.y);
+    nn.forwardProp(network, input);
+    const yPred = nn.getOutputNode(network).output >= 0 ? 1 : -1;
+    const yTrue = dp.label > 0 ? 1 : -1;
+    if (yPred === yTrue) correct++;
+  }
+  return correct / dataPoints.length;
+}
 function updateUI(firstStep = false) {
   // Update the links visually.
   updateWeightsUI(network, d3.select("g.core"));
@@ -1267,8 +1305,10 @@ function updateUI(firstStep = false) {
   // Update loss and iteration number.
   d3.select("#loss-train").text(humanReadable(lossTrain));
   d3.select("#loss-test").text(humanReadable(lossTest));
+  d3.select("#accuracy-test").text(humanReadable(accTest));
   d3.select("#iter-number").text(addCommas(zeroPad(iter)));
-  lineChart.addDataPoint([lossTrain, lossTest]);
+  // Add accuracy as third series; it uses the secondary Y axis
+  lineChart.addDataPoint([lossTrain, lossTest, accTest]);
 }
 
 function constructInputIds(): string[] {
@@ -1535,6 +1575,9 @@ function updateFLCharts() {
   if (flMetrics.clientLosses.length > 0) {
     const latest = flMetrics.clientLosses[flMetrics.clientLosses.length - 1];
     flCharts.clientLoss.addDataPoint(latest);
+    
+    // Update client loss labels
+    updateClientLossLabels();
   }
   
   // Update convergence chart
@@ -1544,6 +1587,41 @@ function updateFLCharts() {
   }
 }
 
+function updateClientLossLabels() {
+  if (flClientLossHistory.length === 0) return;
+
+  const sorted = [...flClientLossHistory].sort((a, b) => a.loss - b.loss);
+  const best = sorted[0];
+  const worst = sorted[sorted.length - 1];
+
+  const chart = d3.select("#client-loss-chart");
+  if (chart.empty()) return;
+
+  chart.style("position", "relative");
+  chart.selectAll(".client-loss-labels").remove();
+
+  // Overlay (flex handles positioning)
+  const layer = chart.append("div").attr("class", "client-loss-labels");
+
+  // Worst (red) shown first so it sits above Best in the stack
+  layer.append("div")
+    .attr("class", "client-loss-label worst")
+    .style({
+      "color": "#F44336",
+      "background": "transparent"
+    })
+    .text(`Worst: C${worst.clientId} (${worst.loss.toFixed(3)})`);
+
+  // Best (blue-gray)
+  layer.append("div")
+    .attr("class", "client-loss-label best")
+    .style({
+      "color": "#607D8B",
+      "background": "transparent"
+    })
+    .text(`Best: C${best.clientId} (${best.loss.toFixed(3)})`);
+}
+
 function oneStep(): void {
   if (isFLEnabled() && state.problem === Problem.CLASSIFICATION) {
     oneStepFL();
@@ -1551,6 +1629,9 @@ function oneStep(): void {
     oneStepSGD();
   }
 }
+
+//============= Start of oneStepFL =============//
+
 
 function oneStepFL(): void {
   var cfg = readFLConfig();
@@ -1563,8 +1644,9 @@ function oneStepFL(): void {
 
   rebuildFLClientsIfNeeded(cfg);
 
-  // Clustered FL path (FedAvg/FedProx only)
   var clustered = !!cfg.clusteringEnabled && (cfg.numClusters || 1) > 1 && (cfg.algo === "FedAvg" || cfg.algo === "FedProx");
+
+  // Clustered FL path (FedAvg/FedProx only)
   if (clustered) {
     ensureClusterState(cfg);
 
@@ -1592,6 +1674,8 @@ function oneStepFL(): void {
     for (var ci0 = 0; ci0 < K; ci0++) perCluster.push([]);
 
     var clientLossValues: number[] = [];
+    // Clear previous round's client loss history
+    flClientLossHistory = [];
 
     // Train each selected client against its cluster's model
     for (var rc = 0; rc < roundClients.length; rc++) {
@@ -1660,6 +1744,12 @@ function oneStepFL(): void {
       }
       clientEndLoss /= Math.max(1, clientEndSamples);
       clientLossValues.push(clientEndLoss);
+
+      // Store client loss history with client ID
+      flClientLossHistory.push({
+        clientId: client.id,
+        loss: clientEndLoss
+      });
 
       // Delta vs cluster weights
       var wLocalAfter = nnFlattenWeights();
@@ -1757,6 +1847,7 @@ function oneStepFL(): void {
     // Eval
     lossTrain = getLoss(network, trainData);
     lossTest  = getLoss(network, testData);
+    accTest   = getAccuracy(network, testData); 
     iter++;
     flRoundsSinceCluster++;
     reclusterIfNeeded(cfg);
@@ -1766,7 +1857,6 @@ function oneStepFL(): void {
   }
 
   // -------- Single-model path (FedAvg, FedProx, SCAFFOLD, FedAdam) --------
-
   // Global weights at round start
   var w0 = nnCloneWeights()[0];
   var roundStartTime = performance.now();
@@ -1803,6 +1893,9 @@ function oneStepFL(): void {
   var clientLossValues: number[] = [];
   var deltas: {delta: Weights; weight: number; clientLoss: number}[] = [];
   var deltaCs: {delta: Weights; weight: number}[] = []; // For SCAFFOLD
+
+  // Clear previous round's client loss history for single-model path
+  flClientLossHistory = [];
 
   // Each client trains locally
   for (var rc = 0; rc < roundClients.length; rc++) {
@@ -1911,6 +2004,12 @@ function oneStepFL(): void {
     }
     clientEndLoss /= clientEndSamples;
     clientLossValues.push(clientEndLoss);
+
+    // Store client loss history with client ID for single-model path
+    flClientLossHistory.push({
+      clientId: client.id,
+      loss: clientEndLoss
+    });
 
     // Delta calculation
     var wLocalAfter = nnFlattenWeights();
@@ -2036,11 +2135,15 @@ function oneStepFL(): void {
   // Eval & UI
   lossTrain = getLoss(network, trainData);
   lossTest  = getLoss(network, testData);
+  accTest   = getAccuracy(network, testData);
   iter++;
   updateUI();
 
   renderClientAllocation(cfg, roundClients.map(c => c.id));
 }
+
+
+//============= End of oneStepFL ============= //
 
 function oneStepSGD(): void {
   iter++;
@@ -2055,6 +2158,7 @@ function oneStepSGD(): void {
   // Compute the loss.
   lossTrain = getLoss(network, trainData);
   lossTest = getLoss(network, testData);
+  accTest  = getAccuracy(network, testData);
   updateUI();
 }
 
@@ -2124,6 +2228,7 @@ function reset(onStartup=false) {
       state.regularization, constructInputIds(), state.initZero);
   lossTrain = getLoss(network, trainData);
   lossTest = getLoss(network, testData);
+  accTest  = getAccuracy(network, testData);
   drawNetwork(network);
   updateUI(true);
   renderClientAllocation();
@@ -2399,7 +2504,7 @@ function generateData(firstTime = false) {
 
   flClients = null;
   flAllocationLocked = false; // new data -> allow rebuilding/allocation
-
+  
 }
 
 let firstInteraction = true;

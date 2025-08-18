@@ -20,6 +20,12 @@ type DataPoint = {
   y: number[];
 };
 
+interface LineChartOptions {
+  secondarySeries?: number[];        // indices rendered on right Y axis
+  y2Domain?: [number, number];       // fixed domain for right axis (e.g., [0,1])
+  smoothingWindow?: number;          // override default smoothing window
+}
+
 function movingAverage(data: number[], window: number): number[] {
   const result: number[] = [];
   for (let i = 0; i < data.length; i++) {
@@ -41,19 +47,31 @@ export class AppendingLineChart {
   private svg;
   private xScale;
   private yScale;
+  private y2Scale;                   // NEW: right-axis scale
   private paths;
   private smoothPaths;
   private lineColors: string[];
   private lightColors: string[];
 
-  private minY = Number.MAX_VALUE;
-  private maxY = Number.MIN_VALUE;
+  // Track domains separately for primary (losses) and secondary (accuracy)
+  private minY1 = Number.POSITIVE_INFINITY;
+  private maxY1 = Number.NEGATIVE_INFINITY;
+  private minY2 = Number.POSITIVE_INFINITY;
+  private maxY2 = Number.NEGATIVE_INFINITY;
 
-  private smoothingWindow: number = 20; 
+  private smoothingWindow: number = 10;
 
-  constructor(container, lineColors: string[]) {
+  private secondarySet: Set<number> = new Set(); // which series use y2
+  private y2Fixed?: [number, number];            // fixed domain for y2 if provided
+
+  constructor(container, lineColors: string[], opts: LineChartOptions = {}) {
     this.lineColors = lineColors;
     this.numLines = lineColors.length;
+    this.secondarySet = new Set(opts.secondarySeries || []);
+    this.y2Fixed = opts.y2Domain;
+    if (typeof opts.smoothingWindow === "number") {
+      this.smoothingWindow = opts.smoothingWindow!;
+    }
     // Generate lighter colors for background
     this.lightColors = lineColors.map(c => d3.rgb(c).brighter(2).toString());
 
@@ -70,6 +88,11 @@ export class AppendingLineChart {
 
     this.yScale = d3.scale.linear()
       .domain([0, 0])
+      .range([height, 0]);
+
+    // NEW: right axis scale (accuracy)
+    this.y2Scale = d3.scale.linear()
+      .domain(this.y2Fixed || [0, 0])
       .range([height, 0]);
 
     this.svg = container.append("svg")
@@ -116,17 +139,26 @@ export class AppendingLineChart {
   reset() {
     this.data = [];
     this.redraw();
-    this.minY = Number.MAX_VALUE;
-    this.maxY = Number.MIN_VALUE;
+    this.minY1 = Number.POSITIVE_INFINITY;
+    this.maxY1 = Number.NEGATIVE_INFINITY;
+    this.minY2 = Number.POSITIVE_INFINITY;
+    this.maxY2 = Number.NEGATIVE_INFINITY;
   }
 
   addDataPoint(dataPoint: number[]) {
     if (dataPoint.length !== this.numLines) {
       throw Error("Length of dataPoint must equal number of lines");
     }
-    dataPoint.forEach(y => {
-      this.minY = Math.min(this.minY, y);
-      this.maxY = Math.max(this.maxY, y);
+
+    // Update running domains separately for primary vs secondary series
+    dataPoint.forEach((y, i) => {
+      if (this.secondarySet.has(i)) {
+        this.minY2 = Math.min(this.minY2, y);
+        this.maxY2 = Math.max(this.maxY2, y);
+      } else {
+        this.minY1 = Math.min(this.minY1, y);
+        this.maxY1 = Math.max(this.maxY1, y);
+      }
     });
 
     this.data.push({x: this.data.length + 1, y: dataPoint});
@@ -134,32 +166,48 @@ export class AppendingLineChart {
   }
 
   private redraw() {
-    // Adjust the x and y domain.
+    // Adjust the x domain.
     this.xScale.domain([1, Math.max(2, this.data.length)]);
-    this.yScale.domain([this.minY, this.maxY]);
-    // Adjust all the <path> elements (lines).
-    let getPathMap = (lineIndex: number) => {
+
+    // Primary Y: losses (relative scale)
+    const hasPrimary = isFinite(this.minY1) && isFinite(this.maxY1);
+    this.yScale.domain(hasPrimary ? [this.minY1, this.maxY1] : [0, 1]);
+
+    // Secondary Y: accuracy (fixed [0,1] if provided, else relative)
+    if (this.y2Fixed) {
+      this.y2Scale.domain(this.y2Fixed);
+    } else {
+      const hasSecondary = isFinite(this.minY2) && isFinite(this.maxY2);
+      this.y2Scale.domain(hasSecondary ? [this.minY2, this.maxY2] : [0, 1]);
+    }
+
+    // Helpers to map line series to the appropriate Y scale
+    const pathMap = (lineIndex: number) => {
+      const scale = this.secondarySet.has(lineIndex) ? this.y2Scale : this.yScale;
       return d3.svg.line<{x: number, y:number[]}>()
         .x(d => this.xScale(d.x))
-        .y(d => this.yScale(d.y[lineIndex]));
+        .y(d => scale(d.y[lineIndex]));
     };
-    let getSmoothPathMap = (lineIndex: number) => {
+
+    const smoothPathD = (lineIndex: number) => {
+      const scale = this.secondarySet.has(lineIndex) ? this.y2Scale : this.yScale;
       // Compute smoothed data for this line
       let smoothed = movingAverage(this.data.map(d => d.y[lineIndex]), this.smoothingWindow);
-      let smoothData = this.data.map((d, i) => ({x: d.x, y: (() => {
+      let smoothData = this.data.map((d, i) => {
         let arr = d.y.slice();
         arr[lineIndex] = smoothed[i];
-        return arr;
-      })()}));
+        return { x: d.x, y: arr };
+      });
       return d3.svg.line<{x: number, y:number[]}>()
         .x(d => this.xScale(d.x))
-        .y(d => this.yScale(d.y[lineIndex]))(smoothData);
+        .y(d => scale(d.y[lineIndex]))(smoothData);
     };
+
     for (let i = 0; i < this.numLines; i++) {
       // Raw
-      this.paths[i].datum(this.data).attr("d", getPathMap(i));
+      this.paths[i].datum(this.data).attr("d", pathMap(i));
       // Smoothed
-      this.smoothPaths[i].attr("d", getSmoothPathMap(i));
+      this.smoothPaths[i].attr("d", smoothPathD(i));
     }
   }
 }

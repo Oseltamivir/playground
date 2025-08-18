@@ -214,6 +214,34 @@ header h1 .optional {
   }
 }
 
+#client-loss-chart {
+  position: relative;  /* anchor for .client-loss-labels */
+}
+
+.client-loss-labels {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;  /* fill */
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;     /* stack labels */
+  justify-content: flex-end;  /* stick to bottom */
+  align-items: flex-start;    /* stick to left */
+  gap: 2px;
+  padding: 1px 1px;           /* small inset from edges */
+  font-size: 10px;
+}
+
+.client-loss-label {
+  padding: 1px 2px;
+  font-size: 9px;
+  line-height: 1.1;
+  white-space: nowrap;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 2px;
+}
+
+
 /* Top Controls */
 #top-controls {
   border-bottom: 1px solid #ddd;
@@ -816,15 +844,43 @@ g.column rect {
   position: relative;
   font-weight: 300;
   font-size: 13px;
-  height: 60px;
+  height: 70px; 
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+/* Add proper spacing between metrics items */
+.output-stats {
+  margin-bottom: 2px; /* Add space between each metric */
+  white-space: nowrap;
+  line-height: 1.5; 
 }
 
 #linechart {
   position: absolute;
   top: 0;
-  right: 0;
+  right: -10px;
   width: 50%;
-  height: 55px;
+  height: 70px; /* Adjusted to match new container height */
+  z-index: 1;
+}
+
+.metrics .output-stats {
+  width: 45%; /* Give text area specific width */
+  z-index: 2; /* Keep text above chart if needed */
+}
+
+/* Make sure values don't wrap and appear on the same line */
+.output-stats span, 
+.output-stats .value {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* Add some spacing between label and value */
+.output-stats span {
+  margin-right: 5px;
 }
 
 .metrics .train {
@@ -835,10 +891,12 @@ g.column rect {
   color: black;
 }
 
-.output .output-stats .value {
-  color: rgba(0, 0, 0, 0.6);
-  font-weight: 300;
-  display: inline;
+.metrics .accuracy {
+  color: #b71c1c;
+}
+
+#accuracy-test {
+  color: #b71c1c;
 }
 
 g.train circle {
