@@ -23,7 +23,6 @@ export function makeClientsFromXY(
   X: number[][], y: number[], numClasses: number,
   numClients: number, batchSize: number, alpha: number
 ): ClientData[] {
-  // Group indices by class
   var byClass: number[][] = [];
   for (var c = 0; c < numClasses; c++) byClass.push([]);
   for (var i = 0; i < y.length; i++) byClass[y[i]].push(i);

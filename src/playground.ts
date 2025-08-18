@@ -2038,6 +2038,8 @@ function oneStepFL(): void {
   lossTest  = getLoss(network, testData);
   iter++;
   updateUI();
+
+  renderClientAllocation(cfg, roundClients.map(c => c.id));
 }
 
 function oneStepSGD(): void {
@@ -2127,7 +2129,6 @@ function reset(onStartup=false) {
   renderClientAllocation();
 }
 
-// Renders small-multiples showing each client’s data; shown only if FL+clustering are on.
 function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []): void {
   const section = d3.select("#client-allocation-section");
   const container = d3.select("#client-allocation");
@@ -2187,7 +2188,37 @@ function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []):
       .node() as HTMLCanvasElement;
     const ctx = canvas.getContext("2d");
 
-    // Draw client’s points.
+    // MODIFIED: Generate and render model prediction overlay for ALL FL modes
+    // Save current network weights (for all cases)
+    const originalWeights = nnFlattenWeights();
+    
+    if (clusteringEnabled && flClusterWeights) {
+      // Use cluster-specific weights when clustering is enabled
+      nnSetWeightsFromFlat(flClusterWeights[cid]);
+    }
+    // Note: when not clustering, we already have the right weights loaded
+    
+    // Generate a miniature decision boundary (lower resolution for speed)
+    const miniDensity = 20; // Lower resolution than main viz
+    const miniGrid = generateDecisionBoundary(miniDensity);
+    
+    // Draw the decision boundary as background
+    const cellSize = w / miniDensity;
+    for (let i = 0; i < miniDensity; i++) {
+      for (let j = 0; j < miniDensity; j++) {
+        const output = miniGrid[i][j];
+        // Semi-transparent background
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = colorScale(output).toString();
+        ctx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
+      }
+    }
+    ctx.globalAlpha = 1.0; // Reset alpha for data points
+    
+    // Restore original network weights
+    nnSetWeightsFromFlat(originalWeights);
+    
+    // Draw client's data points on top (existing code)
     // Domain is [-6,6] for both x and y, same as heatmap.
     const toX = (x: number) => (w * (x + 6) / 12);
     const toY = (y: number) => (h * (6 - y) / 12);
@@ -2204,6 +2235,7 @@ function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []):
         count++;
       }
     }
+    
     // Label: client id and cluster.
     const labelText = clusteringEnabled ? 
       `Client ${client.id} · K${cid} · ${count}` : 
@@ -2214,8 +2246,32 @@ function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []):
       textAlign: "center",
       marginTop: "4px",
       color: "#555"
-    }).text(`Client ${client.id} · K${cid} · ${count}`);
+    }).text(labelText);
   }
+}
+
+// Add helper function to generate a decision boundary for client models
+function generateDecisionBoundary(density: number): number[][] {
+  // Similar to updateDecisionBoundary but simpler, just for output node
+  const result = new Array(density);
+  for (let i = 0; i < density; i++) {
+    result[i] = new Array(density);
+  }
+  
+  const xScale = d3.scale.linear().domain([0, density - 1]).range([-6, 6]);
+  const yScale = d3.scale.linear().domain([density - 1, 0]).range([-6, 6]);
+
+  for (let i = 0; i < density; i++) {
+    for (let j = 0; j < density; j++) {
+      const x = xScale(i);
+      const y = yScale(j);
+      const input = constructInput(x, y);
+      nn.forwardProp(network, input);
+      result[i][j] = nn.getOutputNode(network).output;
+    }
+  }
+  
+  return result;
 }
 
 function initTutorial() {
