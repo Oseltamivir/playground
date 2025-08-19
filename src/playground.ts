@@ -358,6 +358,8 @@ function makeGUI() {
     userHasInteracted();
     renderClientAllocation();
   });
+  
+  
 
   // FL Advanced Toggle Logic
   d3.select("#fl-advanced-toggle").on("change", function() {
@@ -2253,6 +2255,13 @@ function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []):
   }
 
   container.selectAll("*").remove();
+  container.style({
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+    justifyContent: "center",
+    alignItems: "flex-start"
+  });
 
   // Cluster color palette.
   const clusterColor = d3.scale.category10();
@@ -2292,8 +2301,7 @@ function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []):
       .attr("height", h)
       .node() as HTMLCanvasElement;
     const ctx = canvas.getContext("2d");
-
-    // MODIFIED: Generate and render model prediction overlay for ALL FL modes
+  
     // Save current network weights (for all cases)
     const originalWeights = nnFlattenWeights();
     

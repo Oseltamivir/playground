@@ -65,6 +65,48 @@ body {
   }
 }
 
+/* Outer halo glow - SMALLER AND MORE CONTAINED */
+.control.ui-fl-enabled {
+  position: relative;
+  z-index: 1; /* Create stacking context */
+}
+.control.ui-fl-enabled::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: -12px;
+  right: -12px;
+  bottom: -8px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 215, 0, 0.6);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+  pointer-events: none;
+  z-index: -1; /* stay behind the checkbox */
+}
+.control.ui-fl-enabled::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: -8px;
+  right: -8px;
+  bottom: -5px;
+  border-radius: 10px;
+  background: rgba(255, 250, 230, 0.2);
+  pointer-events: none;
+  z-index: -2;
+  animation: halo-pulse 3s ease-in-out infinite;
+}
+
+/* Ensure the checkbox content stays above the halo */
+.control.ui-fl-enabled .mdl-checkbox {
+  position: relative;
+  z-index: 2;
+}
+@keyframes halo-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50%      { opacity: 0.6; transform: scale(1.05); }
+}
+
 /* Buttons */
 
 #main-part .mdl-button {
