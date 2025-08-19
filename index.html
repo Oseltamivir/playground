@@ -16,6 +16,12 @@ limitations under the License.
 <html>
 <head lang="en">
   <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="alternate icon" href="favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+  <meta name="theme-color" content="#ffffff">
+  <style>
+    .header-icon { width:28px; height:28px; vertical-align:middle; margin-right:8px; }
+  </style>
   <meta charset="utf-8">
   <meta name="viewport" content="width=1024">
   <meta name="keywords" content="neural networks,machine learning,javascript">
@@ -56,7 +62,10 @@ limitations under the License.
 
   <!-- Header -->
   <header>
-    <h2 class="l--page">Tinker With a <b>Neural Network</b> <span class="optional">Right Here </span>in Your Browser. Press the spacebar to play/pause</h2>
+    <h2 class="l--page">
+      <img src="favicon.png" alt="Playground icon" class="header-icon">
+      Tinker With a <b>Neural Network</b> <span class="optional">Right Here </span>in Your Browser. Press the spacebar to play/pause
+    </h2>
   </header>
 
   <!-- Top Controls -->
@@ -151,27 +160,30 @@ limitations under the License.
       </div>
 
       <div class="control ui-fl-enabled">
-        <label class="sparkle-gold mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect " for="fl-enabled">
-          <input type="checkbox" id="fl-enabled" class="mdl-checkbox__input">
-          <span class="mdl-checkbox__label">Enable FL</span>
-        </label>
-      </div>
+  <button id="fl-enabled" class="sparkle-gold mdl-button mdl-js-button mdl-button--raised">Run Federated</button>
+</div>
 
       <!-- Row 2: General FL controls -->
       <div class="fl-controls" style="display: none;">
         <div class="fl-controls-row fl-grid">
-          <!-- Lead column (fixed width across rows) -->
-          <div class="control ui-fl-lead ui-fl-algo">
-            <label for="fl-algo">Algorithm</label>
-            <div class="select">
-              <select id="fl-algo">
-                <option value="FedAvg">FedAvg</option>
-                <option value="FedProx">FedProx</option>
-                <option value="FedAdam">FedAdam</option>
-                <option value="SCAFFOLD">SCAFFOLD</option>
-              </select>
+          <!-- Right-side: Show Advanced checkbox -->
+            <div class="control ui-fl-lead ui-fl-algo-group">
+              <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-advanced-toggle">
+                <input type="checkbox" id="fl-advanced-toggle" class="mdl-checkbox__input">
+                <span class="mdl-checkbox__label">Show advanced</span>
+              </label>
+
+              <label for="fl-algo" class="stacked-label">Algorithm</label>
+              <div class="select">
+                <select id="fl-algo">
+                  <option value="FedAvg">FedAvg</option>
+                  <option value="FedProx">FedProx</option>
+                  <option value="FedAdam">FedAdam</option>
+                  <option value="SCAFFOLD">SCAFFOLD</option>
+                </select>
+              </div>
             </div>
-          </div>
+           
           <!-- Three "aligned" columns -->
           <div class="control ui-fl-numClients">
             <label for="fl-numClients">Clients:&nbsp;<span class="value" id="fl-numClients-val"></span></label>
@@ -185,17 +197,15 @@ limitations under the License.
             <p class="slider">
               <input class="mdl-slider mdl-js-slider" type="range" id="fl-clientFrac" min="0.05" max="1" step="0.05" value="0.2">
             </p>
-          </div>
-          <!--
+          </div>          
           <div class="control ui-fl-localEpochs">
             <label for="fl-localEpochs">Local Epochs:&nbsp;<span class="value" id="fl-localEpochs-val"></span></label>
             <p class="slider">
               <input class="mdl-slider mdl-js-slider" type="range" id="fl-localEpochs" min="1" max="10" step="1" value="1">
             </p>
           </div>
-          -->
           <div class="control ui-fl-alpha">
-            <label for="fl-alpha">Non-IID α:&nbsp;<span class="value" id="fl-alpha-val"></span></label>
+            <label for="fl-alpha">Data Heterogeneity:&nbsp;<span class="value" id="fl-alpha-val"></span></label>
             <p class="slider">
               <input class="mdl-slider mdl-js-slider" type="range" id="fl-alpha" min="0.0" max="100" step="0.1" value="10">
             </p>
@@ -204,15 +214,8 @@ limitations under the License.
           <div class="control ui-fl-balance">
             <label for="fl-balance">Data balance:&nbsp;<span class="value" id="fl-balance-val"></span></label>
             <p class="slider">
-              <input class="mdl-slider mdl-js-slider" type="range" id="fl-balance" min="0.1" max="1.0" step="0.05" value="1.0">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-balance" min="0.1" max="1.0" step="0.1" value="1.0">
             </p>
-          </div>
-          <!-- Right-side: Show Advanced checkbox -->
-          <div class="control ui-fl-adv-toggle">
-            <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-advanced-toggle">
-              <input type="checkbox" id="fl-advanced-toggle" class="mdl-checkbox__input">
-              <span class="mdl-checkbox__label">Show advanced</span>
-            </label>
           </div>
         </div>
       </div>
@@ -534,7 +537,9 @@ limitations under the License.
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 20px 0;">
         <!-- Top Left: Core FL Settings -->
         <div>
-          <h3 style="margin-top: 0; border-bottom: 2px solid #0877bd; padding-bottom: 5px;">Core FL Settings</h3>
+          <h3 style="margin-top: 0; border-bottom: 2px solid #0877bd; padding-bottom: 5px;">
+            <img src="1.png" alt="Playground icon" class="header-icon">
+            Core FL Settings</h3>
           <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; font-size: 13px; background: #f9f9f9; padding: 15px; border-radius: 5px;">
             <div style="font-weight: bold;">Parameter</div>
             <div style="font-weight: bold;">Description</div>
@@ -556,15 +561,17 @@ limitations under the License.
             <div>Evenness of data distribution. 1 is even distribution, 0 is extremely skewed</div>
             <div>0-1</div>
             
-            <div><strong>Non-IID α</strong></div>
-            <div>Dirichlet distribution parameter controlling data heterogeneity. Higher values = more IID, lower = more heterogeneous</div>
+            <div><strong>Data Heterogeneity</strong></div>
+            <div>Dirichlet distribution parameter controlling data class heterogeneity. Higher values = more IID, lower = more heterogeneous</div>
             <div>1.0-100</div>
           </div>
         </div>
 
         <!-- Top Right: Advanced Settings -->
         <div>
-          <h3 style="margin-top: 0; border-bottom: 2px solid #f59322; padding-bottom: 5px;">Advanced Settings</h3>
+          <h3 style="margin-top: 0; border-bottom: 2px solid #f59322; padding-bottom: 5px;">
+            <img src="2.png" alt="Playground icon" class="header-icon">
+            Advanced Settings</h3>
           <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; font-size: 13px; background: #f9f9f9; padding: 15px; border-radius: 5px;">
             <div style="font-weight: bold;">Parameter</div>
             <div style="font-weight: bold;">Description</div>
@@ -594,7 +601,9 @@ limitations under the License.
 
         <!-- Bottom Left: Differential Privacy -->
         <div>
-          <h3 style="margin-top: 0; border-bottom: 2px solid #9C27B0; padding-bottom: 5px;">Differential Privacy</h3>
+          <h3 style="margin-top: 0; border-bottom: 2px solid #9C27B0; padding-bottom: 5px;">
+            <img src="3.png" alt="Playground icon" class="header-icon">
+            Differential Privacy</h3>
           <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; font-size: 13px; background: #f9f9f9; padding: 15px; border-radius: 5px;">
             <div style="font-weight: bold;">Parameter</div>
             <div style="font-weight: bold;">Description</div>
@@ -616,7 +625,9 @@ limitations under the License.
 
         <!-- Bottom Right: Clustered Federated Learning -->
         <div>
-          <h3 style="margin-top: 0; border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Clustered Federated Learning</h3>
+          <h3 style="margin-top: 0; border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">
+            <img src="4.png" alt="Playground icon" class="header-icon">
+            Clustered Federated Learning</h3>
           <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; font-size: 13px; background: #f9f9f9; padding: 15px; border-radius: 5px;">
             <div style="font-weight: bold;">Parameter</div>
             <div style="font-weight: bold;">Description</div>

@@ -232,7 +232,8 @@ function getElSel(id: string, def: string): string {
   return el && el.value ? el.value : def;
 }
 function isFLEnabled(): boolean {
-  return getElChecked("fl-enabled");
+  var el = document.getElementById("fl-enabled");
+  return !!(el && el.classList.contains("is-checked"));
 }
 
 function readFLConfig(): FLConfig {
@@ -329,14 +330,19 @@ function resetModel() {
 
 function makeGUI() {
   // Clean up the FL control handlers - remove duplicates and organize properly
-  d3.select("#fl-enabled").on("change", function() {
+  d3.select("#fl-enabled").on("click", function() {
+    // Toggle the is-checked class on the button
+    const button = d3.select(this);
+    const isEnabled = !button.classed("is-checked");
+    button.classed("is-checked", isEnabled);
+    
     const flControls = d3.select(".fl-controls");
     const flAdvanced = d3.select(".fl-advanced-controls");
     const flCluster = d3.select(".fl-cluster-controls");
     const flMetrics = d3.select("#fl-metrics-container");
     const flDisclaimer = d3.select("#fl-disclaimer"); 
     
-    if (this.checked) {
+    if (isEnabled) {
       flControls.style("display", "block");
       flDisclaimer.style("display", "block");
       initFLCharts();
@@ -353,13 +359,12 @@ function makeGUI() {
       flCluster.style("display", "none");
       flMetrics.style("display", "none");
       flDisclaimer.style("display", "none"); // Hide disclaimer
-  }
-    
+    }
+      
     parametersChanged = true;
     userHasInteracted();
     renderClientAllocation();
   });
-  
   
 
   // FL Advanced Toggle Logic
@@ -619,7 +624,7 @@ function makeGUI() {
   });
   problem.property("value", getKeyFromValue(problems, state.problem));
 
-  // Move all the bindMirror calls and algorithm-specific logic here
+  // All the bindMirror calls and algorithm-specific logic
   function bindMirror(idRange: string, idSpan: string) {
     var el = document.getElementById(idRange) as HTMLInputElement;
     var sp = document.getElementById(idSpan) as HTMLElement;
