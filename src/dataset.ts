@@ -34,9 +34,9 @@ type Point = {
  * library as the random generator.
  */
 export function shuffle(array: any[]): void {
-  let counter = array.length;
-  let temp = 0;
-  let index = 0;
+  var counter = array.length;
+  var temp = 0;
+  var index = 0;
   // While there are elements in the array
   while (counter > 0) {
     // Pick a random index

@@ -281,7 +281,7 @@ header h1 .optional {
   line-height: 1.1;
   white-space: nowrap;
   z-index: 10;
-  background: "transparent";
+  background: transparent;
 }
 
 .client-loss--bottom-left {
@@ -310,7 +310,7 @@ header h1 .optional {
   display: -ms-flexbox;
   display: -webkit-flex;
   display: flex;
-  -webkit-justify-content: space-betweenspace-between;
+  -webkit-justify-content: space-between;
   justify-content: space-between;
 }
 
@@ -395,7 +395,6 @@ header h1 .optional {
 }
 
 #top-controls .control .select::after {
-  class: "material-icons";
   content: "arrow_drop_down";
   color: #999;
   font-family: 'Material Icons';

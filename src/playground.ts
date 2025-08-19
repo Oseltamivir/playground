@@ -693,126 +693,6 @@ function makeGUI() {
   }
 }
 
-  function bindMirror(idRange: string, idSpan: string) {
-    var el = document.getElementById(idRange) as HTMLInputElement;
-    var sp = document.getElementById(idSpan) as HTMLElement;
-    if (!el || !sp) return;
-    var update = function(){ sp.textContent = el.value; };
-    el.addEventListener("input", update);
-      update();
-    }
-    bindMirror("fl-numClients", "fl-numClients-val");
-    bindMirror("fl-clientFrac", "fl-clientFrac-val");
-    bindMirror("fl-localEpochs", "fl-localEpochs-val");
-    bindMirror("fl-clientLR", "fl-clientLR-val");
-    bindMirror("fl-alpha", "fl-alpha-val");
-    bindMirror("fl-dropout", "fl-dropout-val");
-    bindMirror("fl-clip", "fl-clip-val");
-    bindMirror("fl-noise", "fl-noise-val");
-    bindMirror("fl-dropout", "fl-dropout-val");
-    bindMirror("fl-clip", "fl-clip-val");
-    bindMirror("fl-noise", "fl-noise-val");
-    bindMirror("fl-numClusters", "fl-numClusters-val");
-    bindMirror("fl-reclusterEvery", "fl-reclusterEvery-val");
-    bindMirror("fl-warmupRounds", "fl-warmupRounds-val");
-    bindMirror("fl-mu", "fl-mu-val");
-
-    // Show/hide FedAdam/FedProx options
-    var algoSel = document.getElementById("fl-algo") as HTMLSelectElement;
-    function showAlgoOpts(){
-      var v = algoSel ? algoSel.value : "FedAvg";
-      var a = document.getElementById("fedadam-opts") as HTMLElement;
-      var p = document.getElementById("fedprox-opts") as HTMLElement;
-      if (a) a.style.display = (v === "FedAdam") ? "" : "none";
-      if (p) p.style.display = (v === "FedProx") ? "" : "none";
-    }
-    if (algoSel) {
-      algoSel.addEventListener("change", function(){ 
-        flServerAdam = null; 
-        flScaffoldC = null; 
-        flScaffoldCi = []; 
-        showAlgoOpts(); 
-      });
-      showAlgoOpts();
-    }
-  
-  d3.select("#fl-enabled").on("change", function() {
-    const flControls = d3.select(".fl-controls");
-    const flAdvanced = d3.select(".fl-advanced-controls");
-    
-    if (this.checked) {
-      flControls.style("display", "block");
-    } else {
-      flControls.style("display", "none");
-      flAdvanced.style("display", "none");
-    }
-    flAllocationLocked = false; // FL on/off may change topology
-    parametersChanged = true;
-    userHasInteracted();
-  });
-
-  // FL Advanced Toggle Logic
-  d3.select("#fl-advanced-toggle").on("change", function() {
-    const flAdvanced = d3.select(".fl-advanced-controls");
-    const flCluster = d3.select(".fl-cluster-controls");
-    flAllocationLocked = false;
-    if (this.checked) {
-      flAdvanced.style("display", "block");
-      flCluster.style("display", "block");
-    } else {
-      flAdvanced.style("display", "none");
-      flCluster.style("display", "none");
-    }
-    
-    parametersChanged = true;
-    userHasInteracted();
-  });
-
-  // Differential Privacy Controls Toggle
-  d3.select("#fl-clientLevelDp").on("change", function() {
-    const dpControls = d3.selectAll(".ui-fl-clip, .ui-fl-noise");
-    
-    if (this.checked) {
-      dpControls.style("display", "block");
-    } else {
-      dpControls.style("display", "none");
-    }
-    
-    parametersChanged = true;
-    userHasInteracted();
-  });
-  
-  // Add scale to the gradient color map.
-  let x = d3.scale.linear().domain([-1, 1]).range([0, 144]);
-  let xAxis = d3.svg.axis()
-    .scale(x)
-    .orient("bottom")
-    .tickValues([-1, 0, 1])
-    .tickFormat(d3.format("d"));
-  d3.select("#colormap g.core").append("g")
-    .attr("class", "x axis")
-    .attr("transform", "translate(0,10)")
-    .call(xAxis);
-
-  // Listen for css-responsive changes and redraw the svg network.
-
-  window.addEventListener("resize", () => {
-    let newWidth = document.querySelector("#main-part")
-        .getBoundingClientRect().width;
-    if (newWidth !== mainWidth) {
-      mainWidth = newWidth;
-      drawNetwork(network);
-      updateUI(true);
-    }
-  });
-
-  // Hide the text below the visualization depending on the URL.
-  if (state.hideText) {
-    d3.select("#article-text").style("display", "none");
-    d3.select("div.more").style("display", "none");
-    d3.select("header").style("display", "none");
-  };
-
 function updateBiasesUI(network: nn.Node[][]) {
   nn.forEachNode(network, true, node => {
     d3.select(`rect#bias-${node.id}`).style("fill", colorScale(node.bias));
@@ -1000,7 +880,7 @@ function drawNetwork(network: nn.Node[][]): void {
 
   // Draw the intermediate layers.
   for (let layerIdx = 1; layerIdx < numLayers - 1; layerIdx++) {
-    let numNodes = network[layerIdx].length;
+    const numNodes = network[layerIdx].length;
     let cx = layerScale(layerIdx) + RECT_SIZE / 2;
     maxY = Math.max(maxY, nodeIndexScale(numNodes));
     addPlusMinusControl(layerScale(layerIdx), layerIdx);
@@ -1010,8 +890,6 @@ function drawNetwork(network: nn.Node[][]): void {
       node2coord[node.id] = {cx, cy};
       drawNode(cx, cy, node.id, false, container, node);
 
-      // Show callout to thumbnails.
-      let numNodes = network[layerIdx].length;
       let nextNumNodes = network[layerIdx + 1].length;
       if (idWithCallout == null &&
           i === numNodes - 1 &&
@@ -2116,7 +1994,7 @@ function oneStepFL(): void {
     if (lineChartData.length > 1) {
       var prevLoss = lineChartData[lineChartData.length - 2].y[0];
       var currentLoss = lossTrain;
-      var convergenceRate = Math.max(0, (prevLoss - currentLoss) / prevLoss);
+      var convergenceRate = Math.max(0, (prevLoss - currentLoss) / Math.max(prevLoss, 1e-12));
       flMetrics.convergenceRates.push([convergenceRate]);
     }
   }
