@@ -28,6 +28,7 @@ export interface FLConfig {
   weightedAggregation: boolean; // weight by |D_k|
   clientDropout: number;        // prob a sampled client silently drops
   iidAlpha: number;             // Dirichlet α (∞ ~ IID, small ~ highly non-IID)
+  clientBalance: number;        // 0.1-1.0: how evenly data is distributed across clients
   
   // FedProx
   mu?: number;                  // proximal strength

@@ -262,27 +262,23 @@ header h1 .optional {
 
 .client-loss-labels {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;  /* fill */
   pointer-events: none;
   display: flex;
-  flex-direction: column;     /* stack labels */
-  justify-content: flex-end;  /* stick to bottom */
-  align-items: flex-start;    /* stick to left */
-  gap: 2px;
-  padding: 1px 1px;           /* small inset from edges */
-  font-size: 10px;
-}
-
-.client-loss-label {
-  padding: 1px 2px;
+  flex-direction: column;
+  gap: 0px;
   font-size: 9px;
+  padding: 1px 1px;
   line-height: 1.1;
   white-space: nowrap;
   z-index: 10;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 2px;
+  background: "transparent";
 }
 
+.client-loss--bottom-left {
+  bottom: 0px; left: 0px;
+  justify-content: flex-end;
+  align-items: flex-start;
+}
 
 /* Top Controls */
 #top-controls {

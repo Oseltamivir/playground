@@ -186,21 +186,27 @@ limitations under the License.
               <input class="mdl-slider mdl-js-slider" type="range" id="fl-clientFrac" min="0.05" max="1" step="0.05" value="0.2">
             </p>
           </div>
-
+          <!--
           <div class="control ui-fl-localEpochs">
             <label for="fl-localEpochs">Local Epochs:&nbsp;<span class="value" id="fl-localEpochs-val"></span></label>
             <p class="slider">
               <input class="mdl-slider mdl-js-slider" type="range" id="fl-localEpochs" min="1" max="10" step="1" value="1">
             </p>
           </div>
-
+          -->
           <div class="control ui-fl-alpha">
             <label for="fl-alpha">Non-IID α:&nbsp;<span class="value" id="fl-alpha-val"></span></label>
             <p class="slider">
-              <input class="mdl-slider mdl-js-slider" type="range" id="fl-alpha" min="1.0" max="100" step="0.1" value="10">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-alpha" min="0.0" max="100" step="0.1" value="10">
             </p>
           </div>
 
+          <div class="control ui-fl-balance">
+            <label for="fl-balance">Data balance:&nbsp;<span class="value" id="fl-balance-val"></span></label>
+            <p class="slider">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-balance" min="0.1" max="1.0" step="0.05" value="1.0">
+            </p>
+          </div>
           <!-- Right-side: Show Advanced checkbox -->
           <div class="control ui-fl-adv-toggle">
             <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="fl-advanced-toggle">
@@ -454,7 +460,7 @@ limitations under the License.
       <div id="heatmap"></div>
       
       <div id="fl-disclaimer" style="display:none; margin: 0px 0; padding: 5px; background-color: #fff3cd; border-radius: 0px; font-size: 12px; color: #856404; clear: both;">
-        <strong>⚠️ Federated Learning Mode</strong>
+        <strong> ⚠️ Federated Learning Mode</strong>
       </div>
       <div style="float:left;margin-top:20px">
         <div style="display:flex; align-items:center;">
@@ -546,9 +552,9 @@ limitations under the License.
             <div>Fraction of clients selected per round (C parameter)</div>
             <div>0.05-1.0</div>
             
-            <div><strong>Local Epochs</strong></div>
-            <div>Number of local training epochs per client per round (E parameter)</div>
-            <div>1-10</div>
+            <div><strong>Data Balance</strong></div>
+            <div>Evenness of data distribution. 1 is even distribution, 0 is extremely skewed</div>
+            <div>0-1</div>
             
             <div><strong>Non-IID α</strong></div>
             <div>Dirichlet distribution parameter controlling data heterogeneity. Higher values = more IID, lower = more heterogeneous</div>

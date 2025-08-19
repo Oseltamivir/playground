@@ -248,6 +248,7 @@ function readFLConfig(): FLConfig {
     weightedAggregation: getElChecked("fl-weighted"),
     clientDropout: Math.max(0, Math.min(0.9, +getElNum("fl-dropout", 0))),
     iidAlpha: getElNum("fl-alpha", 10),
+    clientBalance: getElNum("fl-balance", 1.0), 
     mu: getElNum("fl-mu", 0.1),
     serverLR: getElNum("fl-serverLR", 0.01),
     beta1: getElNum("fl-beta1", 0.9),
@@ -381,11 +382,15 @@ function makeGUI() {
 
   // Clustered FL toggle handler
   d3.select("#fl-clustered").on("change", function() {
-    // Only handle the logic, not visibility
     flAllocationLocked = false;
     parametersChanged = true;
     userHasInteracted();
-    renderClientAllocation();
+    
+    const cfg = readFLConfig();
+    if (this.checked && cfg.clusteringEnabled) {
+      ensureClusterState(cfg);
+    }
+    renderClientAllocation(cfg, []);
   });
 
   // Differential Privacy Controls Toggle
@@ -635,6 +640,8 @@ function makeGUI() {
   bindMirror("fl-numClusters", "fl-numClusters-val");
   bindMirror("fl-reclusterEvery", "fl-reclusterEvery-val");
   bindMirror("fl-warmupRounds", "fl-warmupRounds-val");
+  bindMirror("fl-balance", "fl-balance-val");
+
 
   // Show/hide FedAdam/FedProx options
   var algoSel = document.getElementById("fl-algo") as HTMLSelectElement;
@@ -1338,7 +1345,7 @@ function rebuildFLClientsIfNeeded(cfg: FLConfig): void {
   // If locked and we already have clients, keep the existing allocation.
   if (flAllocationLocked && flClients) return;
   // Rebuild when seed changes or partition knobs change.
-  var sig = state.seed + "|" + cfg.numClients + "|" + state.batchSize + "|" + cfg.iidAlpha + "|" + state.problem;
+  var sig = state.seed + "|" + cfg.numClients + "|" + state.batchSize + "|" + cfg.iidAlpha + "|" + cfg.clientBalance + "|" + state.problem;
   if (flClients && flLastSeed === state.seed && flLastSig === sig) return;
 
   // Only classification is supported here (2 classes in the Playground).
@@ -1348,7 +1355,7 @@ function rebuildFLClientsIfNeeded(cfg: FLConfig): void {
     X.push([trainData[i].x, trainData[i].y]);
     Y.push(trainData[i].label > 0 ? 1 : 0);
   }
-  flClients = makeClientsFromXY(X, Y, 2, cfg.numClients, state.batchSize, cfg.iidAlpha);
+  flClients = makeClientsFromXY(X, Y, 2, cfg.numClients, state.batchSize, cfg.iidAlpha, cfg.clientBalance);
   flLastSeed = state.seed;
   flLastSig = sig;
 
@@ -1602,10 +1609,10 @@ function updateClientLossLabels() {
   chart.style("position", "relative");
   chart.selectAll(".client-loss-labels").remove();
 
-  // Overlay (flex handles positioning)
-  const layer = chart.append("div").attr("class", "client-loss-labels");
+  // Choose desired corner by swapping the class:
+  const layer = chart.append("div")
+    .attr("class", "client-loss-labels client-loss--bottom-left");
 
-  // Worst (red) shown first so it sits above Best in the stack
   layer.append("div")
     .attr("class", "client-loss-label worst")
     .style({
@@ -1614,7 +1621,6 @@ function updateClientLossLabels() {
     })
     .text(`Worst: C${worst.clientId} (${worst.loss.toFixed(3)})`);
 
-  // Best (blue-gray)
   layer.append("div")
     .attr("class", "client-loss-label best")
     .style({
@@ -2181,6 +2187,17 @@ export function getOutputWeights(network: nn.Node[][]): number[] {
 function reset(onStartup=false) {
   lineChart.reset();
   flAllocationLocked = false;
+
+  d3.select("#client-loss-chart").selectAll(".client-loss-labels").remove();
+
+  // Clear metrics that trigger overlay regeneration
+  if ((window as any).flClientLossHistory) flClientLossHistory.length = 0;
+  if ((window as any).flMetrics) {
+    if (flMetrics.clientLosses) flMetrics.clientLosses.length = 0;
+    if (flMetrics.participationRates) flMetrics.participationRates.length = 0;
+    if (flMetrics.commCosts) flMetrics.commCosts.length = 0;
+    if (flMetrics.convergenceRates) flMetrics.convergenceRates.length = 0;
+  }
   
   // Reset FL charts - FIXED
   if (isFLEnabled()) {
