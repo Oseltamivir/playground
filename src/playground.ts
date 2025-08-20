@@ -69,11 +69,12 @@ let flClientLossHistory: {clientId: number, loss: number}[] = [];
 let flSoloClientId: number | null = null;
 let flSoloActive: boolean = false;
 let flGlobalWeightsBeforeSolo: Float32Array | null = null; 
-let flSoloTrainingInterval: number | null = null; // Track interval for manual stepping
-let flSoloOriginalWeights: Float32Array | null = null; // Store client's starting weights
+let flSoloTrainingInterval: number | null = null;
+let flSoloOriginalWeights: Float32Array | null = null; // <-- cluster base for solo
 let flSoloPaused: boolean = false;
 let flSoloPendingDelta: Float32Array | null = null;
 let flSoloPendingClientId: number | null = null;
+let flSoloClusterId: number | null = null; // <-- NEW: client’s cluster during solo
 
 let flCharts: {[key: string]: AppendingLineChart} = {};
 
@@ -400,16 +401,16 @@ function renderFLBanner(): void {
       base('#ffecb3', '1px solid #ffe082');
       el.style.borderLeft = '4px solid #FF9800';
       el.innerHTML =
-        `<strong>Solo Training Mode:</strong> Training only Client ${flBannerClient}. ` +
-        `Click the client again to pause, or press play to exit and resume normal training.`;
+        `<strong>Local Mode:</strong> Training only Client ${flBannerClient}. ` +
+        `Click again to pause, or click play/step`;
       return;
 
     case 'solo-paused':
       base('#ffecb3', '1px solid #ffe082');
       el.style.borderLeft = '4px solid #FF9800';
       el.innerHTML =
-        `<strong>Solo Training Mode (PAUSED):</strong> Client ${flBannerClient}. ` +
-        `Click the client again to resume, or press play to exit and resume normal training.`;
+        `<strong>Local Mode (PAUSED):</strong> Client ${flBannerClient}. ` +
+        `Click again to resume, or click play/step`;
       return;
   }
 }
@@ -522,16 +523,34 @@ function makeGUI() {
         window.clearInterval(flSoloTrainingInterval);
         flSoloTrainingInterval = null;
       }
+
+      // Compute pending delta vs the solo base (cluster-aware), then restore the "view" network
+      if (flSoloOriginalWeights && flSoloClientId != null) {
+        const soloNow = nnFlattenWeights();                  // solo-trained temp model
+        const base = flSoloOriginalWeights;                  // cluster (or global) base used for solo
+        const delta = new Float32Array(soloNow.length);
+        for (let i = 0; i < delta.length; i++) delta[i] = soloNow[i] - base[i];
+
+        flSoloPendingDelta = delta;                          // consumed next FL round
+        flSoloPendingClientId = flSoloClientId;
+
+        // Restore the "view" model so the main UI looks consistent until aggregation
+        if (flGlobalWeightsBeforeSolo) nnSetWeightsFromFlat(flGlobalWeightsBeforeSolo);
+      }
+
       flSoloActive = false;
       flSoloClientId = null;
       flSoloPaused = false;
       flGlobalWeightsBeforeSolo = null;
+      flSoloOriginalWeights = null;
+      flSoloClusterId = null;
 
       updateDecisionBoundary(network, false);
       updateUI(false);
       renderClientAllocation(readFLConfig(), []);
       refreshFLDisclaimer();
     }
+
 
     userHasInteracted();
     player.playOrPause();
@@ -557,16 +576,34 @@ function makeGUI() {
           window.clearInterval(flSoloTrainingInterval);
           flSoloTrainingInterval = null;
         }
+
+        // Compute pending delta vs the solo base (cluster-aware), then restore the "view" network
+        if (flSoloOriginalWeights && flSoloClientId != null) {
+          const soloNow = nnFlattenWeights();                  // solo-trained temp model
+          const base = flSoloOriginalWeights;                  // cluster (or global) base used for solo
+          const delta = new Float32Array(soloNow.length);
+          for (let i = 0; i < delta.length; i++) delta[i] = soloNow[i] - base[i];
+
+          flSoloPendingDelta = delta;                          // consumed next FL round
+          flSoloPendingClientId = flSoloClientId;
+
+          // Restore the "view" model so the main UI looks consistent until aggregation
+          if (flGlobalWeightsBeforeSolo) nnSetWeightsFromFlat(flGlobalWeightsBeforeSolo);
+        }
+
         flSoloActive = false;
         flSoloClientId = null;
         flSoloPaused = false;
         flGlobalWeightsBeforeSolo = null;
+        flSoloOriginalWeights = null;
+        flSoloClusterId = null;
 
         updateDecisionBoundary(network, false);
         updateUI(false);
         renderClientAllocation(readFLConfig(), []);
         refreshFLDisclaimer();
       }
+
 
       userHasInteracted();
       player.playOrPause();
@@ -586,14 +623,14 @@ function makeGUI() {
         window.clearInterval(flSoloTrainingInterval);
         flSoloTrainingInterval = null;
       }
-      if (flGlobalWeightsBeforeSolo) {
+      if (flSoloOriginalWeights && flGlobalWeightsBeforeSolo) {
         const soloNow = nnFlattenWeights();
-        const base = flGlobalWeightsBeforeSolo;
+        const base = flSoloOriginalWeights; // cluster (or global) base used for solo
         const delta = new Float32Array(soloNow.length);
         for (let i = 0; i < delta.length; i++) delta[i] = soloNow[i] - base[i];
         flSoloPendingDelta = delta;
         flSoloPendingClientId = flSoloClientId;
-        nnSetWeightsFromFlat(base);
+        nnSetWeightsFromFlat(flGlobalWeightsBeforeSolo); // restore the view model
       }
       flSoloActive = false;
       flSoloClientId = null;
@@ -1679,29 +1716,34 @@ function oneStep(): void {
 }
 
 function oneStepSoloTraining(): void {
-  // Skip work if paused.
   if (flSoloPaused && flSoloTrainingInterval !== null) return;
   refreshFLDisclaimer();
   const cfg = readFLConfig();
   rebuildFLClientsIfNeeded(cfg);
-  
+
   // Find the solo client
   const client = flClients.find(c => c.id === flSoloClientId);
   if (!client) {
     console.error("Solo client not found!");
-    
     if (flSoloTrainingInterval !== null) {
       window.clearInterval(flSoloTrainingInterval);
       flSoloTrainingInterval = null;
     }
-    
     flSoloActive = false;
     return;
   }
-  
-  // Store original global network state (if not yet saved)
+
+  // If, for any reason, the solo base wasn't set, set it now (cluster-aware)
   if (!flSoloOriginalWeights) {
-    flSoloOriginalWeights = nnFlattenWeights();
+    const clusteringEnabled = getElChecked("fl-clustered");
+    if (clusteringEnabled && flClusterWeights && flSoloClusterId != null) {
+      const base = flClusterWeights[flSoloClusterId];
+      flSoloOriginalWeights = new Float32Array(base.length);
+      for (let i = 0; i < base.length; i++) flSoloOriginalWeights[i] = base[i];
+      nnSetWeightsFromFlat(flSoloOriginalWeights);
+    } else {
+      flSoloOriginalWeights = nnFlattenWeights();
+    }
   }
   
   // Train one epoch on the client's data
@@ -2506,16 +2548,49 @@ function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []):
       d3.selectAll("#client-allocation [data-client-id]").style({ outline: "none" });
       d3.select(`[data-client-id='${client.id}']`).style({ outline: "3px solid #FF5722", outlineOffset: "0px" });
 
-      // Start solo training with independent interval
+      // Starting new solo training on this client.
+      if (flSoloTrainingInterval !== null) {
+        window.clearInterval(flSoloTrainingInterval);
+        flSoloTrainingInterval = null;
+      }
+      player.pause();
+
+      // Save the current "view" model to restore UI after solo exits
+      flGlobalWeightsBeforeSolo = nnFlattenWeights();
+
+      // Decide solo base: cluster weights if clustering, else current model
+      const clusteringEnabled = getElChecked("fl-clustered");
+      if (clusteringEnabled && flClusterWeights) {
+        // Base = this client's cluster weights
+        const base = flClusterWeights[cid];
+        flSoloOriginalWeights = new Float32Array(base.length);
+        for (let i = 0; i < base.length; i++) flSoloOriginalWeights[i] = base[i];
+        nnSetWeightsFromFlat(flSoloOriginalWeights);  // train on the cluster model
+        flSoloClusterId = cid;
+      } else {
+        // Non-clustered: base = current global model
+        flSoloOriginalWeights = nnFlattenWeights();
+        flSoloClusterId = null;
+      }
+
+      flSoloActive = true;
+      flSoloPaused = false;
+      flSoloClientId = client.id;
+
+      // Clear any solo outline on other clients; set on this one
+      d3.selectAll("#client-allocation [data-client-id]").style({ outline: "none" });
+      d3.select(`[data-client-id='${client.id}']`).style({ outline: "3px solid #FF5722", outlineOffset: "0px" });
+
+      // Start solo training
       flSoloTrainingInterval = window.setInterval(() => { oneStepSoloTraining(); }, interval);
 
       // Display (centralized)
       refreshFLDisclaimer();
 
-      // Display solo training status
+      // Banner text (unchanged below)
       const disclaimerEl = document.getElementById("fl-disclaimer");
       if (disclaimerEl) {
-        disclaimerEl.innerHTML = `<strong>Solo Training Mode:</strong> Training only Client ${flSoloClientId}. Click the client again to pause, or press play to exit and resume normal training.`;
+        disclaimerEl.innerHTML = `<strong>Local Mode:</strong> Training only Client ${flSoloClientId}. Click again to pause, or click play/step`;
         disclaimerEl.style.display = "block";
         disclaimerEl.style.backgroundColor = "#ffecb3";
         disclaimerEl.style.borderLeft = "4px solid #FF9800";
@@ -2630,17 +2705,18 @@ function updateClientCanvas(clientId: number, cfg?: FLConfig): void {
 
   // Determine weights to visualize
   const clusteringEnabled = getElChecked("fl-clustered");
-  let cid = 0;
-  if (clusteringEnabled && flClients && flClientCluster && flClients.length === flClientCluster.length) {
+  let used: Float32Array;
+
+  // If this is the solo client, preview the in-progress solo model
+  if (flSoloActive && flSoloClientId === clientId) {
+    used = nnFlattenWeights();
+  } else if (clusteringEnabled && flClusterWeights) {
+    // Otherwise, show its cluster model
     const idx = flClients.findIndex(c => c.id === clientId);
-    if (idx >= 0) {
+    let cid = 0;
+    if (idx >= 0 && flClientCluster && flClientCluster.length === flClients.length) {
       cid = Math.max(0, Math.min((flClientCluster[idx] || 0), (cfg.numClusters || 1) - 1));
     }
-  }
-
-  // Use cluster weights if clustering, else current (solo) weights
-  let used: Float32Array | undefined = undefined;
-  if (clusteringEnabled && flClusterWeights) {
     used = flClusterWeights[cid];
   } else {
     used = nnFlattenWeights();
