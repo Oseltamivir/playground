@@ -65,6 +65,15 @@ let flMetrics = {
 };
 let flClientLossHistory: {clientId: number, loss: number}[] = [];
 
+// Solo-client training state
+let flSoloClientId: number | null = null;
+let flSoloActive: boolean = false;
+let flGlobalWeightsBeforeSolo: Float32Array | null = null; 
+let flSoloTrainingInterval: number | null = null; // Track interval for manual stepping
+let flSoloOriginalWeights: Float32Array | null = null; // Store client's starting weights
+let flSoloPaused: boolean = false;
+let flSoloPendingDelta: Float32Array | null = null;
+let flSoloPendingClientId: number | null = null;
 
 let flCharts: {[key: string]: AppendingLineChart} = {};
 
@@ -134,6 +143,7 @@ class Player {
 
   /** Plays/pauses the player. */
   playOrPause() {
+    refreshFLDisclaimer();
     if (this.isPlaying) {
       this.isPlaying = false;
       this.pause();
@@ -152,6 +162,7 @@ class Player {
 
   play() {
     this.pause();
+    refreshFLDisclaimer();
     this.isPlaying = true;
     if (this.callback) {
       this.callback(this.isPlaying);
@@ -328,6 +339,97 @@ function resetModel() {
   updateUI(true);
 }
 
+// Add: FL banner helpers
+function setFLDisclaimerVisible(visible: boolean): void {
+  const els = Array.from(document.querySelectorAll<HTMLDivElement>('#fl-disclaimer'));
+  if (els.length === 0) return;
+
+  els.forEach(el => {
+    if (visible) {
+      el.style.display = 'block';
+      // Reapply the visual styles in case they were cleared
+      el.style.margin = '0px 0';
+      el.style.padding = '5px';
+      el.style.backgroundColor = '#fff3cd';
+      el.style.color = '#856404';
+      el.style.borderRadius = '0px';
+      // Optional subtle border to match the warning look
+      el.style.border = '1px solid #ffeeba';
+
+      if (!el.innerHTML || el.innerText.trim().length === 0) {
+        el.innerHTML = '<strong> ⚠️ Federated Learning Mode</strong>';
+      }
+    } else {
+      el.style.display = 'none';
+    }
+  });
+}
+
+// Banner state
+type FLBannerMode = 'hidden' | 'fl' | 'solo' | 'solo-paused';
+let flBannerMode: FLBannerMode = 'hidden';
+let flBannerClient: number | null = null;
+
+function renderFLBanner(): void {
+  const el = document.getElementById('fl-disclaimer') as HTMLDivElement | null;
+  if (!el) return;
+
+  const base = (bg: string, border: string, color = '#856404') => {
+    el.style.display = 'block';
+    el.style.margin = '0px 0';
+    el.style.padding = '8px 12px';
+    el.style.backgroundColor = bg;
+    el.style.color = color;
+    el.style.borderRadius = '0px';
+    el.style.border = border;
+    // remove any previous left border accent unless solo
+    el.style.borderLeft = '';
+  };
+
+  switch (flBannerMode) {
+    case 'hidden':
+      el.style.display = 'none';
+      return;
+
+    case 'fl':
+      base('#fff3cd', '1px solid #ffeeba');
+      el.innerHTML = '<strong> ⚠️ Federated Learning Mode</strong>';
+      return;
+
+    case 'solo':
+      base('#ffecb3', '1px solid #ffe082');
+      el.style.borderLeft = '4px solid #FF9800';
+      el.innerHTML =
+        `<strong>Solo Training Mode:</strong> Training only Client ${flBannerClient}. ` +
+        `Click the client again to pause, or press play to exit and resume normal training.`;
+      return;
+
+    case 'solo-paused':
+      base('#ffecb3', '1px solid #ffe082');
+      el.style.borderLeft = '4px solid #FF9800';
+      el.innerHTML =
+        `<strong>Solo Training Mode (PAUSED):</strong> Client ${flBannerClient}. ` +
+        `Click the client again to resume, or press play to exit and resume normal training.`;
+      return;
+  }
+}
+
+function setFLBanner(mode: FLBannerMode, clientId?: number | null): void {
+  flBannerMode = mode;
+  // Replace nullish coalescing to avoid TS1109/TS1005 on older TS
+  flBannerClient = (clientId !== undefined && clientId !== null) ? clientId : null;
+  renderFLBanner();
+}
+
+function refreshFLDisclaimer(): void {
+  if (!isFLEnabled()) { setFLBanner('hidden'); return; }
+  if (flSoloActive) {
+    setFLBanner(flSoloPaused ? 'solo-paused' : 'solo', flSoloClientId);
+  } else {
+    setFLBanner('fl');
+  }
+}
+
 function makeGUI() {
   // Clean up the FL control handlers - remove duplicates and organize properly
   d3.select("#fl-enabled").on("click", function() {
@@ -340,27 +442,23 @@ function makeGUI() {
     const flAdvanced = d3.select(".fl-advanced-controls");
     const flCluster = d3.select(".fl-cluster-controls");
     const flMetrics = d3.select("#fl-metrics-container");
-    const flDisclaimer = d3.select("#fl-disclaimer"); 
     
     if (isEnabled) {
       flControls.style("display", "block");
-      flDisclaimer.style("display", "block");
       initFLCharts();
-
-      // Show advanced and cluster controls if advanced toggle is checked
       const advancedToggle = document.getElementById("fl-advanced-toggle") as HTMLInputElement;
       if (advancedToggle && advancedToggle.checked) {
         flAdvanced.style("display", "block");
-        flCluster.style("display", "block"); // Always show cluster controls when advanced is on
+        flCluster.style("display", "block");
       }
     } else {
       flControls.style("display", "none");
       flAdvanced.style("display", "none");
       flCluster.style("display", "none");
       flMetrics.style("display", "none");
-      flDisclaimer.style("display", "none"); // Hide disclaimer
     }
-      
+    refreshFLDisclaimer();
+    
     parametersChanged = true;
     userHasInteracted();
     renderClientAllocation();
@@ -419,7 +517,22 @@ function makeGUI() {
   });
 
   d3.select("#play-pause-button").on("click", function () {
-    // Change the button's content.
+    if (flSoloActive) {
+      if (flSoloTrainingInterval !== null) {
+        window.clearInterval(flSoloTrainingInterval);
+        flSoloTrainingInterval = null;
+      }
+      flSoloActive = false;
+      flSoloClientId = null;
+      flSoloPaused = false;
+      flGlobalWeightsBeforeSolo = null;
+
+      updateDecisionBoundary(network, false);
+      updateUI(false);
+      renderClientAllocation(readFLConfig(), []);
+      refreshFLDisclaimer();
+    }
+
     userHasInteracted();
     player.playOrPause();
   });
@@ -437,6 +550,24 @@ function makeGUI() {
         return;
       }
       
+      // Execute the same logic as the play/pause button click
+      // If in solo mode, exit but keep the trained weights
+      if (flSoloActive) {
+        if (flSoloTrainingInterval !== null) {
+          window.clearInterval(flSoloTrainingInterval);
+          flSoloTrainingInterval = null;
+        }
+        flSoloActive = false;
+        flSoloClientId = null;
+        flSoloPaused = false;
+        flGlobalWeightsBeforeSolo = null;
+
+        updateDecisionBoundary(network, false);
+        updateUI(false);
+        renderClientAllocation(readFLConfig(), []);
+        refreshFLDisclaimer();
+      }
+
       userHasInteracted();
       player.playOrPause();
     }
@@ -449,9 +580,34 @@ function makeGUI() {
   d3.select("#next-step-button").on("click", () => {
     player.pause();
     userHasInteracted();
-    if (iter === 0) {
-      simulationStarted();
+
+    if (flSoloActive) {
+      if (flSoloTrainingInterval !== null) {
+        window.clearInterval(flSoloTrainingInterval);
+        flSoloTrainingInterval = null;
+      }
+      if (flGlobalWeightsBeforeSolo) {
+        const soloNow = nnFlattenWeights();
+        const base = flGlobalWeightsBeforeSolo;
+        const delta = new Float32Array(soloNow.length);
+        for (let i = 0; i < delta.length; i++) delta[i] = soloNow[i] - base[i];
+        flSoloPendingDelta = delta;
+        flSoloPendingClientId = flSoloClientId;
+        nnSetWeightsFromFlat(base);
+      }
+      flSoloActive = false;
+      flSoloClientId = null;
+      flSoloPaused = false;
+      flGlobalWeightsBeforeSolo = null;
+      flSoloOriginalWeights = null;
+
+      updateDecisionBoundary(network, false);
+      updateUI(false);
+      renderClientAllocation(readFLConfig(), []);
+      refreshFLDisclaimer();
     }
+
+    if (iter === 0) simulationStarted();
     oneStep();
   });
 
@@ -1514,6 +1670,7 @@ function updateClientLossLabels() {
 }
 
 function oneStep(): void {
+  refreshFLDisclaimer();
   if (isFLEnabled() && state.problem === Problem.CLASSIFICATION) {
     oneStepFL();
   } else {
@@ -1521,8 +1678,75 @@ function oneStep(): void {
   }
 }
 
-//============= Start of oneStepFL =============//
+function oneStepSoloTraining(): void {
+  // Skip work if paused.
+  if (flSoloPaused && flSoloTrainingInterval !== null) return;
+  refreshFLDisclaimer();
+  const cfg = readFLConfig();
+  rebuildFLClientsIfNeeded(cfg);
+  
+  // Find the solo client
+  const client = flClients.find(c => c.id === flSoloClientId);
+  if (!client) {
+    console.error("Solo client not found!");
+    
+    if (flSoloTrainingInterval !== null) {
+      window.clearInterval(flSoloTrainingInterval);
+      flSoloTrainingInterval = null;
+    }
+    
+    flSoloActive = false;
+    return;
+  }
+  
+  // Store original global network state (if not yet saved)
+  if (!flSoloOriginalWeights) {
+    flSoloOriginalWeights = nnFlattenWeights();
+  }
+  
+  // Train one epoch on the client's data
+  let clientLoss = 0;
+  let clientSamples = 0;
+  
+  for (let b = 0; b < client.batches.length; b++) {
+    const batch = client.batches[b];
+    for (let t = 0; t < batch.x.length; t++) {
+      const xy = batch.x[t];
+      const input = constructInput(xy[0], xy[1]);
+      const target = batch.y[t] > 0 ? 1 : -1;
+      
+      // Forward and backward pass
+      nn.forwardProp(network, input);
+      nn.backProp(network, target, nn.Errors.SQUARE);
+      
+      // Accumulate loss
+      clientLoss += nn.Errors.SQUARE.error(nn.getOutputNode(network).output, target);
+      clientSamples++;
+    }
+    
+    // Update weights after each batch
+    nn.updateWeights(network, cfg.clientLR || 0.03, state.regularizationRate);
+  }
+  
+  // Calculate average loss
+  clientLoss /= Math.max(1, clientSamples);
+  
+  // Update the single client loss history
+  flClientLossHistory = [{
+    clientId: client.id,
+    loss: clientLoss
+  }];
+  
+  // Update metrics for display
+  lossTrain = clientLoss;
+  lossTest = getLoss(network, testData);
+  accTest = getAccuracy(network, testData);
+  
+  // Only re-render the selected client's mini-graph
+  updateClientCanvas(client.id, cfg);
+}
 
+//============= Start of oneStepFL =============//
 
 function oneStepFL(): void {
   var cfg = readFLConfig();
@@ -1536,7 +1760,7 @@ function oneStepFL(): void {
   rebuildFLClientsIfNeeded(cfg);
 
   var clustered = !!cfg.clusteringEnabled && (cfg.numClusters || 1) > 1 && (cfg.algo === "FedAvg" || cfg.algo === "FedProx");
-
+  refreshFLDisclaimer();
   // Clustered FL path (FedAvg/FedProx only)
   if (clustered) {
     ensureClusterState(cfg);
@@ -1544,13 +1768,16 @@ function oneStepFL(): void {
     var K = flClusterCount;
     var roundStartTime = performance.now();
 
-    // Sample clients
+    // Sample clients - if we were in solo mode, now include all clients for aggregation
     var k = Math.max(1, Math.round((cfg.clientFrac || 0.2) * flClients.length));
     var shuffled = flClients.slice(0);
     shuffled.sort(function(){ return Math.random() - 0.5; });
     var dropout = (cfg.clientDropout !== undefined && cfg.clientDropout !== null) ? cfg.clientDropout : 0;
+
     var roundClients: ClientData[] = [];
     var selectedClients = 0;
+
+    // Don't limit to solo client when stepping - include all selected clients
     for (var i = 0; i < k && i < shuffled.length; i++) {
       selectedClients++;
       if (Math.random() > dropout) roundClients.push(shuffled[i]);
@@ -1663,6 +1890,22 @@ function oneStepFL(): void {
       flLastClientDelta[clientIdx] = delta[0];
     }
 
+    // If we have a pending solo delta, add it to the proper cluster bucket
+    if (flSoloPendingDelta && flSoloPendingClientId != null) {
+      const soloIdx = flClients.findIndex(c => c.id === flSoloPendingClientId);
+      if (soloIdx >= 0) {
+        const cidSolo = Math.max(0, Math.min(K - 1, (flClientCluster[soloIdx] || 0)));
+        const soloClient = flClients[soloIdx];
+        perCluster[cidSolo].push({
+          delta: [flSoloPendingDelta],
+          weight: soloClient.size,
+          clientLoss: 0
+        });
+      }
+      flSoloPendingDelta = null;
+      flSoloPendingClientId = null;
+    }
+
     // Aggregate per cluster and update server cluster models
     for (var c = 0; c < K; c++) {
       var deltasC = perCluster[c];
@@ -1765,13 +2008,16 @@ function oneStepFL(): void {
     }
   }
 
-  // Sample clients
+  // Sample clients - don't limit to solo client when stepping
   var k = Math.max(1, Math.round(cfg.clientFrac * flClients.length));
   var shuffled = flClients.slice(0);
   shuffled.sort(function(){ return Math.random() - 0.5; });
   var dropout = (cfg.clientDropout !== undefined && cfg.clientDropout !== null) ? cfg.clientDropout : 0;
+
   var roundClients: ClientData[] = [];
   var selectedClients = 0;
+
+  // Include all selected clients for proper aggregation
   for (var i = 0; i < k && i < shuffled.length; i++) {
     selectedClients++;
     if (Math.random() > dropout) roundClients.push(shuffled[i]);
@@ -1938,6 +2184,13 @@ function oneStepFL(): void {
     }
   }
 
+  if (flSoloPendingDelta && flSoloPendingClientId != null) {
+    const soloClient = flClients.find(c => c.id === flSoloPendingClientId);
+    const w = soloClient ? soloClient.size : 1;
+    deltas.push({ delta: [flSoloPendingDelta], weight: w, clientLoss: 0 });
+    flSoloPendingDelta = null;
+    flSoloPendingClientId = null;
+  }
   // Aggregate and update server
   var agg = aggregateDeltas(deltas.map(function(d){ return {delta: d.delta, weight: d.weight}; }), !!cfg.weightedAggregation);
 
@@ -2067,7 +2320,13 @@ export function getOutputWeights(network: nn.Node[][]): number[] {
   }
   return weights;
 }
+
 function reset(onStartup=false) {
+  // Stop any running solo training
+  if (flSoloTrainingInterval !== null) {
+    window.clearInterval(flSoloTrainingInterval);
+    flSoloTrainingInterval = null;
+  }
   lineChart.reset();
   flAllocationLocked = false;
 
@@ -2082,14 +2341,14 @@ function reset(onStartup=false) {
     if (flMetrics.convergenceRates) flMetrics.convergenceRates.length = 0;
   }
   
-  // Reset FL charts - FIXED
+  // Reset FL charts 
   if (isFLEnabled()) {
-    // Use for...in loop instead of Object.values()
     for (let chartName in flCharts) {
       if (flCharts.hasOwnProperty(chartName)) {
         flCharts[chartName].reset();
       }
     }
+
     flMetrics = {
       participationRates: [],
       commCosts: [],
@@ -2098,6 +2357,14 @@ function reset(onStartup=false) {
       fairnessMetrics: [],
       dpPrivacyBudget: 0
     };
+  
+    flSoloActive = false;
+    flSoloClientId = null;
+    flGlobalWeightsBeforeSolo = null;
+    flSoloOriginalWeights = null;
+    
+    // Hide solo training status message
+    refreshFLDisclaimer();
 
     flClusterWeights = null;
     flClientCluster = [];
@@ -2167,6 +2434,7 @@ function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []):
   const clusterColor = d3.scale.category10();
   const w = 100, h = 100;
   const active = new Set<number>(activeClientIds || []);
+  const interval = 20;
 
   // Build per-client flattened points.
   for (let c = 0; c < flClients.length; c++) {
@@ -2176,13 +2444,83 @@ function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []):
       0;
     const isActive = active.has(client.id);
 
-    const wrap = container.append("div").style({
-      display: "inline-block",
-      border: `2px solid ${clusterColor(cid.toString())}`,
-      borderRadius: "4px",
-      padding: "4px",
-      width: `${w + 8}px`,
-      transition: "box-shadow 150ms ease, border-width 150ms ease"
+    const wrap = container.append("div")
+      .attr("data-client-id", String(client.id))
+      .style({
+        display: "inline-block",
+        border: `2px solid ${clusterColor(cid.toString())}`,
+        borderRadius: "4px",
+        padding: "4px",
+        width: `${w + 8}px`,
+        transition: "box-shadow 150ms ease, border-width 150ms ease",
+        cursor: "pointer"
+      });
+
+    // Toggle solo training by clicking a client graph
+    wrap.on("click", () => {
+      // If already in solo mode for this client, toggle pause/resume
+      if (flSoloActive && flSoloClientId === client.id) {
+        flSoloPaused = !flSoloPaused;
+
+        if (flSoloPaused) {
+          if (flSoloTrainingInterval !== null) {
+            window.clearInterval(flSoloTrainingInterval);
+            flSoloTrainingInterval = null;
+          }
+        } else {
+          if (flSoloTrainingInterval === null) {
+            flSoloTrainingInterval = window.setInterval(() => {
+              oneStepSoloTraining();
+            }, interval);
+          }
+        }
+
+        // Update only this client's outline
+        const target = d3.select(`[data-client-id='${client.id}']`);
+        target.style({
+          outline: flSoloPaused ? "3px dashed #FF5722" : "3px solid #FF5722",
+          outlineOffset: "0px"
+        });
+
+        refreshFLDisclaimer();
+        updateClientCanvas(client.id, cfg!);
+        return;
+      }
+
+      // Starting new solo training on this client.
+      if (flSoloTrainingInterval !== null) {
+        window.clearInterval(flSoloTrainingInterval);
+        flSoloTrainingInterval = null;
+      }
+      player.pause();
+
+      // Save the global model weights before starting solo training (kept for reference; NOT restored on exit)
+      flGlobalWeightsBeforeSolo = nnFlattenWeights();
+      flSoloOriginalWeights = nnFlattenWeights();
+      
+      flSoloActive = true;
+      flSoloPaused = false;
+      flSoloClientId = client.id;
+
+      // Clear any solo outline on other clients; set on this one
+      d3.selectAll("#client-allocation [data-client-id]").style({ outline: "none" });
+      d3.select(`[data-client-id='${client.id}']`).style({ outline: "3px solid #FF5722", outlineOffset: "0px" });
+
+      // Start solo training with independent interval
+      flSoloTrainingInterval = window.setInterval(() => { oneStepSoloTraining(); }, interval);
+
+      // Display (centralized)
+      refreshFLDisclaimer();
+
+      // Display solo training status
+      const disclaimerEl = document.getElementById("fl-disclaimer");
+      if (disclaimerEl) {
+        disclaimerEl.innerHTML = `<strong>Solo Training Mode:</strong> Training only Client ${flSoloClientId}. Click the client again to pause, or press play to exit and resume normal training.`;
+        disclaimerEl.style.display = "block";
+        disclaimerEl.style.backgroundColor = "#ffecb3";
+        disclaimerEl.style.borderLeft = "4px solid #FF9800";
+        disclaimerEl.style.padding = "8px 12px";
+      }
     });
 
     // Pulse highlight for active clients this round
@@ -2196,7 +2534,16 @@ function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []):
       }, 180);
     }
 
+    // Persistent highlight for solo training target
+    if (flSoloActive && flSoloClientId === client.id) {
+      wrap.style({
+        outline: flSoloPaused ? "3px dashed #FF5722" : "3px solid #FF5722",
+        outlineOffset: "0px"
+      });
+    }
+
     const canvas = wrap.append("canvas")
+      .attr("id", `client-canvas-${client.id}`)
       .attr("width", w)
       .attr("height", h)
       .node() as HTMLCanvasElement;
@@ -2209,10 +2556,8 @@ function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []):
       // Use cluster-specific weights when clustering is enabled
       nnSetWeightsFromFlat(flClusterWeights[cid]);
     }
-    // Note: when not clustering, we already have the right weights loaded
-    
     // Generate a miniature decision boundary (lower resolution for speed)
-    const miniDensity = 20; // Lower resolution than main viz
+    const miniDensity = 20;
     const miniGrid = generateDecisionBoundary(miniDensity);
     
     // Draw the decision boundary as background
@@ -2220,23 +2565,20 @@ function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []):
     for (let i = 0; i < miniDensity; i++) {
       for (let j = 0; j < miniDensity; j++) {
         const output = miniGrid[i][j];
-        // Semi-transparent background
         ctx.globalAlpha = 0.3;
         ctx.fillStyle = colorScale(output).toString();
         ctx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
       }
     }
-    ctx.globalAlpha = 1.0; // Reset alpha for data points
+    ctx.globalAlpha = 1.0;
     
     // Restore original network weights
     nnSetWeightsFromFlat(originalWeights);
     
-    // Draw client's data points on top (existing code)
-    // Domain is [-6,6] for both x and y, same as heatmap.
+    // Draw client's data points on top
     const toX = (x: number) => (w * (x + 6) / 12);
     const toY = (y: number) => (h * (6 - y) / 12);
 
-    // Flatten batches.
     let count = 0;
     for (let b = 0; b < client.batches.length; b++) {
       const batch = client.batches[b];
@@ -2249,7 +2591,6 @@ function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []):
       }
     }
     
-    // Label: client id and cluster.
     const labelText = clusteringEnabled ? 
       `Client ${client.id} · K${cid} · ${count}` : 
       `Client ${client.id} · ${count}`;
@@ -2263,12 +2604,100 @@ function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []):
   }
 }
 
+// Add helper: update only one client's mini-graph without touching others
+function updateClientCanvas(clientId: number, cfg?: FLConfig): void {
+  cfg = cfg || readFLConfig();
+  const container = d3.select("#client-allocation");
+  if (container.empty()) return;
+
+  // If the canvas for this client doesn't exist (first render), build once.
+  // Use non-generic d3.select for D3 v3 typings.
+  const canvasSel = d3.select(`#client-canvas-${clientId}`);
+  if (canvasSel.empty()) {
+    // Build all once (no ticking); subsequent updates will be partial.
+    renderClientAllocation(cfg, []);
+    return;
+  }
+
+  const canvas = canvasSel.node() as HTMLCanvasElement;
+  const w = canvas.width;
+  const h = canvas.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  // Clear previous drawing
+  ctx.clearRect(0, 0, w, h);
+
+  // Determine weights to visualize
+  const clusteringEnabled = getElChecked("fl-clustered");
+  let cid = 0;
+  if (clusteringEnabled && flClients && flClientCluster && flClients.length === flClientCluster.length) {
+    const idx = flClients.findIndex(c => c.id === clientId);
+    if (idx >= 0) {
+      cid = Math.max(0, Math.min((flClientCluster[idx] || 0), (cfg.numClusters || 1) - 1));
+    }
+  }
+
+  // Use cluster weights if clustering, else current (solo) weights
+  let used: Float32Array | undefined = undefined;
+  if (clusteringEnabled && flClusterWeights) {
+    used = flClusterWeights[cid];
+  } else {
+    used = nnFlattenWeights();
+  }
+
+  // Draw boundary
+  const miniDensity = 20;
+  const miniGrid = generateDecisionBoundary(miniDensity, used);
+  const cellSize = w / miniDensity;
+  for (let i = 0; i < miniDensity; i++) {
+    for (let j = 0; j < miniDensity; j++) {
+      const output = miniGrid[i][j];
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = colorScale(output).toString();
+      ctx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
+    }
+  }
+  ctx.globalAlpha = 1.0;
+
+  // Redraw client's data points on top
+  const client = flClients.find(c => c.id === clientId);
+  if (!client) return;
+  const toX = (x: number) => (w * (x + 6) / 12);
+  const toY = (y: number) => (h * (6 - y) / 12);
+  for (let b = 0; b < client.batches.length; b++) {
+    const batch = client.batches[b];
+    for (let t = 0; t < batch.x.length; t++) {
+      const xy = batch.x[t];
+      const label = batch.y[t] > 0 ? 1 : -1;
+      ctx.fillStyle = colorScale(label).toString();
+      ctx.fillRect(toX(xy[0]), toY(xy[1]), 3, 3);
+    }
+  }
+
+  // Update outline to reflect solo state (no full re-render)
+  const wrap = d3.select(`[data-client-id='${clientId}']`);
+  if (!wrap.empty() && flSoloActive && flSoloClientId === clientId) {
+    wrap.style({
+      outline: flSoloPaused ? "3px dashed #FF5722" : "3px solid #FF5722",
+      outlineOffset: "0px"
+    });
+  }
+}
+
 // Add helper function to generate a decision boundary for client models
-function generateDecisionBoundary(density: number): number[][] {
-  // Similar to updateDecisionBoundary but simpler, just for output node
+function generateDecisionBoundary(density: number, weights?: Float32Array): number[][] {
   const result = new Array(density);
   for (let i = 0; i < density; i++) {
     result[i] = new Array(density);
+  }
+  
+  // Save current weights
+  const originalWeights = nnFlattenWeights();
+  
+  // Apply provided weights if available
+  if (weights) {
+    nnSetWeightsFromFlat(weights);
   }
   
   const xScale = d3.scale.linear().domain([0, density - 1]).range([-6, 6]);
@@ -2283,6 +2712,9 @@ function generateDecisionBoundary(density: number): number[][] {
       result[i][j] = nn.getOutputNode(network).output;
     }
   }
+  
+  // Restore original weights
+  nnSetWeightsFromFlat(originalWeights);
   
   return result;
 }
