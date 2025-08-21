@@ -1,7 +1,12 @@
-(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-
-var ANALYTICS_ID = 'Add your own analytics ID here';
-ga('create', ANALYTICS_ID, 'auto');
+(function(w,d,s,src,mid){
+  var js = d.createElement(s);
+  js.async = true;
+  js.src = src + '?id=' + mid;
+  d.head.appendChild(js);
+  w.dataLayer = w.dataLayer || [];
+  function gtag(){w.dataLayer.push(arguments);}
+  w.gtag = gtag;
+  gtag('js', new Date());
+  // Disable auto page_view; we send page_view manually on first interaction.
+  gtag('config', mid, { send_page_view: false, debug_mode: true });
+})(window, document, 'script', 'https://www.googletagmanager.com/gtag/js', 'G-71BJZLVZ2K');

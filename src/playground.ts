@@ -415,6 +415,35 @@ function renderFLBanner(): void {
   }
 }
 
+function initButtonEventHandlers() {
+  // Add to makeGUI() or call from there
+  const buttons = ["#play-pause-button", "#next-step-button", "#reset-button"];
+  
+  buttons.forEach(selector => {
+    const button = d3.select(selector);
+    // Keep original click handler
+    const originalHandler = button.on("click");
+    
+    // Replace with enhanced handler
+    button.on("click", function() {
+      // Ensure propagation is stopped with proper type checking
+      if (d3.event) {
+        const event = d3.event as Event;
+        if (typeof event.preventDefault === "function") event.preventDefault();
+        if (typeof event.stopPropagation === "function") event.stopPropagation();
+        if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+      }
+      
+      console.log(`${selector} clicked`); // Debug logging
+      
+      // Call original handler in the right context
+      if (typeof originalHandler === 'function') {
+        originalHandler.call(this);
+      }
+    });
+  });
+}
+
 function setFLBanner(mode: FLBannerMode, clientId?: number | null): void {
   flBannerMode = mode;
   // Replace nullish coalescing to avoid TS1109/TS1005 on older TS
@@ -518,6 +547,11 @@ function makeGUI() {
   });
 
   d3.select("#play-pause-button").on("click", function () {
+    // Prevent any parent handlers/overlays from swallowing the click
+    const ev = (d3.event as any);
+    if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
+    if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
+
     if (flSoloActive) {
       if (flSoloTrainingInterval !== null) {
         window.clearInterval(flSoloTrainingInterval);
@@ -550,7 +584,6 @@ function makeGUI() {
       renderClientAllocation(readFLConfig(), []);
       refreshFLDisclaimer();
     }
-
 
     userHasInteracted();
     player.playOrPause();
@@ -889,6 +922,8 @@ function makeGUI() {
     d3.select("div.more").style("display", "none");
     d3.select("header").style("display", "none");
   }
+
+  initButtonEventHandlers();
 }
 
 function updateBiasesUI(network: nn.Node[][]) {
@@ -2926,25 +2961,29 @@ function generateData(firstTime = false) {
 let firstInteraction = true;
 let parametersChanged = false;
 
+declare function gtag(...args: any[]): void;
 function userHasInteracted() {
   if (!firstInteraction) {
     return;
   }
   firstInteraction = false;
-  let page = 'index';
-  if (state.tutorial != null && state.tutorial !== '') {
-    page = `/v/tutorials/${state.tutorial}`;
-  }
-  ga('set', 'page', page);
-  ga('send', 'pageview', {'sessionControl': 'start'});
+  const page = (state.tutorial != null && state.tutorial !== '') ?
+    `/v/tutorials/${state.tutorial}` : 'index';
+
+  // GA4 page_view
+  gtag('event', 'page_view', {
+    page_title: document.title || '',
+    page_location: location.href,
+    page_path: page
+  });
 }
 
 function simulationStarted() {
-  ga('send', {
-    hitType: 'event',
-    eventCategory: 'Starting Simulation',
-    eventAction: parametersChanged ? 'changed' : 'unchanged',
-    eventLabel: state.tutorial == null ? '' : state.tutorial
+  // GA4 event
+  gtag('event', 'starting_simulation', {
+    event_category: 'engagement',
+    event_action: parametersChanged ? 'changed' : 'unchanged',
+    event_label: state.tutorial == null ? '' : state.tutorial
   });
   parametersChanged = false;
 }

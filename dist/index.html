@@ -24,30 +24,67 @@ limitations under the License.
   </style>
   <meta charset="utf-8">
   <meta name="viewport" content="width=1024">
-  <meta name="keywords" content="neural networks,machine learning,javascript">
+  
+  <meta name="keywords" content="federated learning playground,neural network visualization,machine learning education,interactive ML demo,federated averaging,differential privacy,client clustering,FedAvg,FedProx,FedAdam,SCAFFOLD,deep learning tutorial,AI education,TypeScript ML,browser neural network">
+  <meta name="description" content="Interactive federated learning playground: train neural networks across distributed clients, explore clustering algorithms, add differential privacy, and visualize decision boundaries in real-time." />
+  <meta name="robots" content="index, follow">
+  <meta name="language" content="English">
 
-  <meta property="og:type" content="article"/>
-  <meta property="og:title" content="Tensorflow — Neural Network Playground"/>
-  <meta property="og:description" content="Tinker with a real neural network right here in your browser.">
-  <meta property="og:url" content="http://playground.tensorflow.org"/>
-  <meta property="og:image" content="http://playground.tensorflow.org/preview.png"/>
+  <meta property="og:title" content="Federated Learning Playground - Interactive Neural Network Demo">
+  <meta property="og:description" content="Train neural networks across distributed clients, explore clustering and differential privacy, and visualize results in real time. Free educational tool for learning federated learning concepts.">
+  <meta property="og:image" content="https://oseltamivir.github.io/playground/favicon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://oseltamivir.github.io/playground/">
+  <meta property="og:site_name" content="Federated Learning Playground">
 
-  <meta name="twitter:card" value="summary_large_image">
-  <meta name="twitter:title" content="Tensorflow — Neural Network Playground">
-  <meta name="twitter:description" content="Tinker with a real neural network right here in your browser.">
-  <meta name="twitter:url" content="http://playground.tensorflow.org">
-  <meta name="twitter:image" content="http://playground.tensorflow.org/preview.png">
-  <meta name="twitter:image:width" content="560">
-  <meta name="twitter:image:height" content="295">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Federated Learning Playground - Interactive Neural Network Demo">
+  <meta name="twitter:description" content="Train neural networks across distributed clients, explore clustering and differential privacy, and visualize results in real time.">
+  <meta name="twitter:url" content="https://oseltamivir.github.io/playground/">
+  <meta name="twitter:image" content="https://oseltamivir.github.io/playground/favicon.png">
 
-  <meta name="author" content="Daniel Smilkov and Shan Carter">
+  <link rel="canonical" href="https://oseltamivir.github.io/playground/">
+
+  <meta name="author" content="Daniel Smilkov and Shan Carter, et al">
+  
   <title>A Neural Network Playground</title>
   <link rel="stylesheet" href="bundle.css" type="text/css">
   <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500|Material+Icons" rel="stylesheet" type="text/css">
   <script src="lib.js"></script>
+  <script src="analytics.js"></script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Federated Learning Playground",
+    "applicationCategory": "EducationalApplication",
+    "operatingSystem": "Web",
+    "url": "https://oseltamivir.github.io/playground/",
+    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+    "description": "Interactive federated learning demo: train neural networks across distributed clients, explore clustering algorithms, add differential privacy, and visualize decision boundaries in real-time.",
+    "creator": {
+      "@type": "Person",
+      "name": "Daniel Smilkov and Shan Carter et al"
+    },
+    "programmingLanguage": "TypeScript",
+    "license": "https://github.com/oseltamivir/playground/blob/master/LICENSE",
+    "codeRepository": "https://github.com/oseltamivir/playground"
+  }
+  </script>
+  
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+  <meta name="google-site-verification" content="EujnY0VbFztDAmJautElaE9S7GaK0mCiOwQZUPmxU2c" />
 </head>
 
 <body>
+  <!-- Fallback content for JavaScript-less  -->
+  <noscript>
+    <h1>Federated Learning Playground</h1>
+    <p>Interactive in-browser demo of federated learning with client clustering,
+    differential privacy, and real-time decision boundary visualizations.</p>
+    <p>This application requires JavaScript to function. Please enable JavaScript in your browser to use the interactive features.</p>
+  </noscript>
   <!-- GitHub link -->
   <a class="github-link" href="https://github.com/tensorflow/playground" title="Source on GitHub" target="_blank">
     <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 60.5 60.5" width="60" height="60">
