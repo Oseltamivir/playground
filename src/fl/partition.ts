@@ -238,38 +238,15 @@ export function makeClientsFromXY(
     const idx = Array.from({ length: numClients }, (_, i) => i);
     shuffle(idx);
 
-    // If everyone hit cap but we still have rem, relax caps gradually
-    const pickClass = (prob: number[], available: boolean[]): number => {
-    let totalProb = 0;
-    for (let c = 0; c < numClasses; c++) if (available[c]) totalProb += prob[c];
-    if (totalProb <= 0) {
-      // uniform over available
-      const availIdx: number[] = [];
-      for (let c = 0; c < numClasses; c++) if (available[c]) availIdx.push(c);
-      if (availIdx.length === 0) return -1;
-      return availIdx[randint(availIdx.length)];
-    }
-    const r = rand() * totalProb;
-    let acc = 0;
-    for (let c = 0; c < numClasses; c++) {
-      if (!available[c]) continue;
-      acc += prob[c];
-      if (r <= acc) return c;
-    }
-    // fallback
-    for (let c = numClasses - 1; c >= 0; c--) if (available[c]) return c;
-    return -1;
-  };
-
-  // ---- Helper for giving out remainders (seeded) ----
-  const giveRemainders = (currCap: number, quotas: number[], add: number[], idx: number[]): void => {
-    // sort by fractional remainder desc
-    idx.sort((i, j) => (quotas[j] - Math.floor(quotas[j])) - (quotas[i] - Math.floor(quotas[i])));
-    for (let t = 0; t < idx.length && rem > 0; t++) {
-      const i = idx[t];
-      if (add[i] < currCap) { add[i]++; rem--; }
-    }
-  };
+    // ---- Helper for giving out remainders (seeded) ----
+    const giveRemainders = (currCap: number, quotas: number[], add: number[], idx: number[]): void => {
+      // sort by fractional remainder desc
+      idx.sort((i, j) => (quotas[j] - Math.floor(quotas[j])) - (quotas[i] - Math.floor(quotas[i])));
+      for (let t = 0; t < idx.length && rem > 0; t++) {
+        const i = idx[t];
+        if (add[i] < currCap) { add[i]++; rem--; }
+      }
+    };
     while (rem > 0) {
       const before = rem;
       giveRemainders(capAdd, quotas, add, idx);

@@ -58,7 +58,6 @@ export function kMeans(
   if (metric === "cosine") for (const v of data) normalizeInPlace(v);
 
   // Init centroids with simple seeded shuffle pick
-  // Init centroids with simple seeded shuffle pick
   const idxs: number[] = [];
   for (let i = 0; i < N; i++) idxs[i] = i;
   seededShuffle(idxs, seed);
