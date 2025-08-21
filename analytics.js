@@ -7,5 +7,6 @@
   function gtag(){w.dataLayer.push(arguments);}
   w.gtag = gtag;
   gtag('js', new Date());
-  gtag('config', mid, { debug_mode: true }); // Optional: view events in GA4 DebugView
+  // Disable auto page_view; we send page_view manually on first interaction.
+  gtag('config', mid, { send_page_view: false, debug_mode: true });
 })(window, document, 'script', 'https://www.googletagmanager.com/gtag/js', 'G-71BJZLVZ2K');
