@@ -11,13 +11,15 @@ The changes made include the addition of federated learning (FL) capabilities, a
     - FedAdam (using ServerAdam optimizer)
     - SCAFFOLD
 
-3. Data Partitioning: Simulation of data heterogeneity among clients. The data is partitioned among clients using a pseudo-Dirichlet distribution, controlled by the "Non-IID α" setting.
+3. Data Partitioning: Simulation of data heterogeneity among clients. The data is partitioned among clients using a Dirichlet process to control Non‑IID levels and client balance
 
-4. Clustered FL: Supports clustering clients into groups that train separate models. Uses k-Means clustering with either cosine similarity or l2 distance.
+4. Clustered FL: Supports clustering clients into groups that train separate models. Uses k-Means clustering with either cosine similarity or l2 distance. *Note: test scores are determined with a model obtained by weight averagering*
 
-5. Differential Privacy: Includes options for adding differential privacy to the training process, with functions like addGaussianNoise and clipUpdate from `dp.ts`.
+5. Differential Privacy: Includes options for adding differential privacy to the training process, with functions like `addGaussianNoise` and `clipUpdate` from `dp.ts`.
 
-6. New UI and Visualizations: The UI expanded to include controls for FL parameters and new charts to visualize FL-specific metrics like client participation, communication cost, and loss distribution.
+6. New UI and Visualizations: UI has been expanded to include controls for FL parameters and new charts to visualize FL-specific metrics like client participation, communication cost, and loss distribution.
+
+7. Solo client training mode: Clicking on a local model while paused will train only that model, pressing play or step will aggregate all models. This allows for local-only training without FL aggregation and observations of how local models aggregate.
 
 All modifications are done on top of TensorFlow's work, if "Enable FL" is not checked, the original TensorFlow functionality remains. More info on the controls and visualizations can be found on the playground itself.
 
