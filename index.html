@@ -45,6 +45,52 @@ limitations under the License.
   <link rel="stylesheet" href="bundle.css" type="text/css">
   <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500|Material+Icons" rel="stylesheet" type="text/css">
   <script src="lib.js"></script>
+  <!-- GA4 loader -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){ dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX', {
+      send_page_view: false,
+      debug_mode: location.hostname === 'localhost' // shows up in DebugView
+    });
+
+    // Minimal UA->GA4 shim so your existing ga(...) calls still work
+    window.ga = function(cmd, arg1, arg2) {
+      if (cmd === 'set' && arg1 === 'page') {
+        // Remember the page path for the next page_view
+        window.__ga4_page_path = arg2 || '/';
+        return;
+      }
+      if (cmd === 'send') {
+        // 1) Simple 'pageview'
+        if (arg1 === 'pageview') {
+          gtag('event', 'page_view', {
+            page_title: document.title || '',
+            page_location: location.href,
+            page_path: window.__ga4_page_path || location.pathname,
+            // UA 'sessionControl': 'start' ≈ start a new session via session_id or just ignore.
+          });
+          return;
+        }
+        // 2) UA-style event object: {hitType:'event', eventCategory, eventAction, eventLabel}
+        if (arg1 && typeof arg1 === 'object' && arg1.hitType === 'event') {
+          gtag('event', (arg1.eventAction || 'event').toLowerCase().replace(/\s+/g,'_'), {
+            event_category: arg1.eventCategory,
+            event_label: arg1.eventLabel
+          });
+          return;
+        }
+        // 3) ga('send', 'event', action, label?) legacy form
+        if (arg1 === 'event') {
+          var action = arg2 || 'event';
+          gtag('event', action.toLowerCase().replace(/\s+/g,'_'));
+        }
+      }
+    };
+  </script>
+
 </head>
 
 <body>
