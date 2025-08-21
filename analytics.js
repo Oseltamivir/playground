@@ -1,7 +1,11 @@
-(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-
-var ANALYTICS_ID = 'G-71BJZLVZ2K';
-ga('create', ANALYTICS_ID, 'auto');
+(function(w,d,s,src,mid){
+  var js = d.createElement(s);
+  js.async = true;
+  js.src = src + '?id=' + mid;
+  d.head.appendChild(js);
+  w.dataLayer = w.dataLayer || [];
+  function gtag(){w.dataLayer.push(arguments);}
+  w.gtag = gtag;
+  gtag('js', new Date());
+  gtag('config', mid, { debug_mode: true }); // Optional: view events in GA4 DebugView
+})(window, document, 'script', 'https://www.googletagmanager.com/gtag/js', 'G-71BJZLVZ2K');
