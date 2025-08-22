@@ -26,7 +26,7 @@ limitations under the License.
   <meta name="viewport" content="width=1024">
   
   <meta name="keywords" content="federated learning playground,neural network visualization,machine learning education,interactive ML demo,federated averaging,differential privacy,client clustering,FedAvg,FedProx,FedAdam,SCAFFOLD,deep learning tutorial,AI education,TypeScript ML,browser neural network">
-  <meta name="description" content="Interactive federated learning playground: train neural networks across distributed clients, explore clustering algorithms, add differential privacy, and visualize decision boundaries in real-time." />
+  <meta name="description" content="Interactive federated learning: train neural networks across distributed clients, explore clustering algorithms, add differential privacy, and visualize decision boundaries in real-time." />
   <meta name="robots" content="index, follow">
   <meta name="language" content="English">
 
@@ -47,7 +47,7 @@ limitations under the License.
 
   <meta name="author" content="Daniel Smilkov and Shan Carter, et al">
   
-  <title>A Neural Network Playground</title>
+  <title>A Federated Learning Playground</title>
   <link rel="stylesheet" href="bundle.css" type="text/css">
   <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500|Material+Icons" rel="stylesheet" type="text/css">
   <script src="lib.js"></script>
@@ -78,7 +78,6 @@ limitations under the License.
 </head>
 
 <body>
-  <!-- Fallback content for JavaScript-less  -->
   <noscript>
     <h1>Federated Learning Playground</h1>
     <p>Interactive in-browser demo of federated learning with client clustering,
@@ -197,8 +196,8 @@ limitations under the License.
       </div>
 
       <div class="control ui-fl-enabled">
-  <button id="fl-enabled" class="sparkle-gold mdl-button mdl-js-button mdl-button--raised">Run Federated</button>
-</div>
+        <button id="fl-enabled" class="sparkle-gold mdl-button mdl-js-button mdl-button--raised">Run Federated</button>
+      </div>
 
       <!-- Row 2: General FL controls -->
       <div class="fl-controls" style="display: none;">
@@ -562,13 +561,16 @@ limitations under the License.
 
   <!-- Client Allocation (shown when FL + clustering are enabled) -->
   <div id="client-allocation-section" class="l--page" style="display:none; margin-top: 16px; margin-bottom: 8px;">
-    <h3 style="margin: 8px 0 12px;">Client Data Allocation</h3>
+    <h3 style="margin: 8px 0 12px;">Local Models</h3>
     <div id="client-allocation" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
   </div>
   <!-- Article -->
   <article id="article-text">
     <div class="l--body">
-      <h2>Federated Learning Parameters Guide</h2>
+      <h1>Federated Learning playground guide</h1>
+      <p>Enable FL by pressing "Run federated", click on local models to start local-only training. Click play or step to aggregate all models after local training. View parameter descriptions below</p>
+
+      <h2>Federated Learning parameters guide</h2>
       <p>This playground supports several federated learning algorithms with extensive hyperparameter control. Below is a comprehensive guide to all available parameters:</p>
       <!-- 2x2 Grid of Parameter Tables -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 20px 0;">
@@ -817,7 +819,5 @@ limitations under the License.
     </div>
   </footer>
   <script src="bundle.js"></script>
-  <!-- Google analytics -->
-  <script src="analytics.js"></script>
 </body>
 </html>
