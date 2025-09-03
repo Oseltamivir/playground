@@ -26,7 +26,7 @@ limitations under the License.
   <meta name="viewport" content="width=1024">
   
   <meta name="keywords" content="federated learning playground,neural network visualization,machine learning education,interactive ML demo,federated averaging,differential privacy,client clustering,FedAvg,FedProx,FedAdam,SCAFFOLD,deep learning tutorial,AI education,TypeScript ML,browser neural network">
-  <meta name="description" content="Interactive federated learning playground: train neural networks across distributed clients, explore clustering algorithms, add differential privacy, and visualize decision boundaries in real-time." />
+  <meta name="description" content="Interactive federated learning: train neural networks across distributed clients, explore clustering algorithms, add differential privacy, and visualize decision boundaries in real-time." />
   <meta name="robots" content="index, follow">
   <meta name="language" content="English">
 
@@ -47,7 +47,7 @@ limitations under the License.
 
   <meta name="author" content="Daniel Smilkov and Shan Carter, et al">
   
-  <title>A Neural Network Playground</title>
+  <title>A Federated Learning Playground</title>
   <link rel="stylesheet" href="bundle.css" type="text/css">
   <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500|Material+Icons" rel="stylesheet" type="text/css">
   <script src="lib.js"></script>
@@ -300,14 +300,14 @@ limitations under the License.
           <div class="control ui-fl-clip" style="display: none;">
             <label for="fl-clip">DP clip:&nbsp;<span class="value" id="fl-clip-val"></span></label>
             <p class="slider">
-              <input class="mdl-slider mdl-js-slider" type="range" id="fl-clip" min="0" max="10" step="0.1" value="0">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-clip" min="0" max="0.1" step="0.01" value="0">
             </p>
           </div>
 
           <div class="control ui-fl-noise" style="display: none;">
             <label for="fl-noise">DP σ:&nbsp;<span class="value" id="fl-noise-val"></span></label>
             <p class="slider">
-              <input class="mdl-slider mdl-js-slider" type="range" id="fl-noise" min="0" max="2" step="0.05" value="0">
+              <input class="mdl-slider mdl-js-slider" type="range" id="fl-noise" min="0" max="0.1" step="0.01" value="0">
             </p>
           </div>
         </div>

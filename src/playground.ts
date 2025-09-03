@@ -42,7 +42,6 @@ let flLastSig = "";
 let flServerAdam: ServerAdam = null;
 let flLastAlgo = "";
 
-
 // SCAFFOLD state
 let flScaffoldC: Float32Array|null = null;          // server control variate c
 let flScaffoldCi: (Float32Array|null)[] = [];       // per-client control variates c_i
@@ -225,6 +224,54 @@ let player = new Player();
 let lineChart = new AppendingLineChart(d3.select("#linechart"),
     ["#777", "black", "#b71c1c"], { secondarySeries: [2], y2Domain: [0, 1] });
 
+function nnFlattenWeights(): Float32Array {
+  // Order: biases of non-input layers, then each link weight.
+  var arr: number[] = []; // Is a double!
+  // For layer in network,
+  for (var layerIdx = 1; layerIdx < network.length; layerIdx++) {
+    var layer = network[layerIdx];
+    // append bias
+    for (var i = 0; i < layer.length; i++) arr.push(layer[i].bias);
+    // for each node in layer
+    for (var i2 = 0; i2 < layer.length; i2++) {
+      var node = layer[i2];
+      // Append weights
+      for (var j = 0; j < node.inputLinks.length; j++) arr.push(node.inputLinks[j].weight);
+    }
+  }
+  var out = new Float32Array(arr.length); // Typed arrays don't support push/pop, so I convert back
+  for (var k = 0; k < arr.length; k++) out[k] = arr[k];
+  return out;
+}
+
+/*
+From pytorch's FlatParameter
+
+Why flatten weights?
+Deterministic, contiguous layout of all biases + weights
+  Makes future “server math” trivial: easier averaging, L2 norm, K-means
+
+Fewer comms & better locality
+ Coalescing lots of small tensors into one big contiguous buffer reduces 
+ launch/communication overhead and improves memory locality. 
+ ￼
+Trade-offs:
+  Flattening breaks per-parameter semantics (names/shapes), 
+  enforces uniform dtype/requires_grad within a flat group.
+*/
+
+function nnSetWeightsFromFlat(buf: Float32Array): void {
+  var idx = 0;
+  for (var layerIdx = 1; layerIdx < network.length; layerIdx++) {
+    var layer = network[layerIdx];
+    for (var i = 0; i < layer.length; i++) { layer[i].bias = buf[idx++]; }
+    for (var i2 = 0; i2 < layer.length; i2++) {
+      var node = layer[i2];
+      for (var j = 0; j < node.inputLinks.length; j++) node.inputLinks[j].weight = buf[idx++];
+    }
+  }
+}
+
 function getElNum(id: string, def: number): number {
   var el = document.getElementById(id) as HTMLInputElement;
   if (!el) return def;
@@ -267,9 +314,11 @@ function readFLConfig(): FLConfig {
     beta1: getElNum("fl-beta1", 0.9),
     beta2: getElNum("fl-beta2", 0.999),
     eps: getElNum("fl-eps", 1e-8),
+
     dpClipNorm: getElNum("fl-clip", 0),
     dpNoiseMult: getElNum("fl-noise", 0),
     dpClientLevel: getElChecked("fl-clientLevelDp"),
+
     clusteringEnabled: getElChecked("fl-clustered"),
     numClusters: Math.max(1, getElInt("fl-numClusters", 2)),
     reclusterEvery: Math.max(1, getElInt("fl-reclusterEvery", 5)),
@@ -340,32 +389,6 @@ function resetModel() {
   updateUI(true);
 }
 
-// Add: FL banner helpers
-function setFLDisclaimerVisible(visible: boolean): void {
-  const els = Array.from(document.querySelectorAll<HTMLDivElement>('#fl-disclaimer'));
-  if (els.length === 0) return;
-
-  els.forEach(el => {
-    if (visible) {
-      el.style.display = 'block';
-      // Reapply the visual styles in case they were cleared
-      el.style.margin = '0px 0';
-      el.style.padding = '5px';
-      el.style.backgroundColor = '#fff3cd';
-      el.style.color = '#856404';
-      el.style.borderRadius = '0px';
-      // Optional subtle border to match the warning look
-      el.style.border = '1px solid #ffeeba';
-
-      if (!el.innerHTML || el.innerText.trim().length === 0) {
-        el.innerHTML = '<strong> ⚠️ Federated Learning Mode</strong>';
-      }
-    } else {
-      el.style.display = 'none';
-    }
-  });
-}
-
 // Banner state
 type FLBannerMode = 'hidden' | 'fl' | 'solo' | 'solo-paused';
 let flBannerMode: FLBannerMode = 'hidden';
@@ -434,9 +457,8 @@ function initButtonEventHandlers() {
         if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
       }
       
-      console.log(`${selector} clicked`); // Debug logging
-      
-      // Call original handler in the right context
+      // console.log(`${selector} clicked`); // Debug logging
+
       if (typeof originalHandler === 'function') {
         originalHandler.call(this);
       }
@@ -494,7 +516,6 @@ function makeGUI() {
     renderClientAllocation();
   });
   
-
   // FL Advanced Toggle Logic
   d3.select("#fl-advanced-toggle").on("change", function() {
     const flAdvanced = d3.select(".fl-advanced-controls");
@@ -1475,7 +1496,7 @@ function rebuildFLClientsIfNeeded(cfg: FLConfig): void {
   flScaffoldCi = [];
   for (let i2 = 0; i2 < flClients.length; i2++) flScaffoldCi.push(null);
 
-  // Reset clustered FL (avoid Array.fill for older TS targets)
+  // Reset clustered FL
   var arr0 = new Array(flClients.length);
   for (var a0 = 0; a0 < arr0.length; a0++) arr0[a0] = 0;
   flClientCluster = arr0 as number[];
@@ -1489,33 +1510,6 @@ function rebuildFLClientsIfNeeded(cfg: FLConfig): void {
   flRoundsSinceCluster = 0;
 }
 
-function nnFlattenWeights(): Float32Array {
-  // Order: biases of non-input layers, then each link weight.
-  var arr: number[] = [];
-  for (var layerIdx = 1; layerIdx < network.length; layerIdx++) {
-    var layer = network[layerIdx];
-    for (var i = 0; i < layer.length; i++) arr.push(layer[i].bias);
-    for (var i2 = 0; i2 < layer.length; i2++) {
-      var node = layer[i2];
-      for (var j = 0; j < node.inputLinks.length; j++) arr.push(node.inputLinks[j].weight);
-    }
-  }
-  var out = new Float32Array(arr.length);
-  for (var k = 0; k < arr.length; k++) out[k] = arr[k];
-  return out;
-}
-
-function nnSetWeightsFromFlat(buf: Float32Array): void {
-  var idx = 0;
-  for (var layerIdx = 1; layerIdx < network.length; layerIdx++) {
-    var layer = network[layerIdx];
-    for (var i = 0; i < layer.length; i++) { layer[i].bias = buf[idx++]; }
-    for (var i2 = 0; i2 < layer.length; i2++) {
-      var node = layer[i2];
-      for (var j = 0; j < node.inputLinks.length; j++) node.inputLinks[j].weight = buf[idx++];
-    }
-  }
-}
 
 function nnCloneWeights(): Weights {
   var f = nnFlattenWeights();
@@ -1527,7 +1521,6 @@ function nnCloneWeights(): Weights {
 function nnSetWeights(w: Weights): void {
   nnSetWeightsFromFlat(w[0]);
 }
-
 
 // Helpers for clustered FL
 function ensureClusterState(cfg: FLConfig): void {
@@ -1562,14 +1555,18 @@ function ensureClusterState(cfg: FLConfig): void {
 
 function averageClusterWeightsBySize(): Float32Array {
   if (!flClusterWeights) return nnFlattenWeights();
-  var a = new Array(flClients.length);
-  for (var i = 0; i < a.length; i++) a[i] = 0;
-  const counts = a as number[];
-  for (const c of flClientCluster) if (c >= 0 && c < counts.length) counts[c]++;
-  let total = counts.reduce((a,b)=>a+b,0) || 1;
+
+  const K = flClusterWeights.length;
+  const counts = new Array<number>(K).fill(0);
+
+  for (const c of flClientCluster) {
+    if (c >= 0 && c < K) counts[c]++;
+  }
+  const total = counts.reduce((a, b) => a + b, 0) || 1;
+
   const d = flClusterWeights[0].length;
   const out = new Float32Array(d);
-  for (let c = 0; c < flClusterWeights.length; c++) {
+  for (let c = 0; c < K; c++) {
     const w = flClusterWeights[c];
     const wgt = counts[c] / total;
     for (let i = 0; i < d; i++) out[i] += wgt * w[i];
@@ -1823,6 +1820,7 @@ function oneStepSoloTraining(): void {
   updateClientCanvas(client.id, cfg);
 }
 
+
 //============= Start of oneStepFL =============//
 
 function oneStepFL(): void {
@@ -1961,7 +1959,9 @@ function oneStepFL(): void {
           delta = addGaussianNoise(delta, sigma);
           flMetrics.dpPrivacyBudget += 1 / (sigma * sigma);
         }
+        
       }
+
 
       perCluster[cid].push({delta: delta, weight: client.size, clientLoss: clientEndLoss});
       flLastClientDelta[clientIdx] = delta[0];
@@ -1989,17 +1989,6 @@ function oneStepFL(): void {
       if (deltasC.length === 0) continue;
 
       var agg = aggregateDeltas(deltasC.map(function(d){ return {delta: d.delta, weight: d.weight}; }), !!cfg.weightedAggregation);
-
-      // Server-level DP
-      if (!cfg.dpClientLevel && cfg.dpClipNorm && cfg.dpClipNorm > 0) {
-        agg = clipUpdate(agg, cfg.dpClipNorm);
-        var dpNoiseMult2 = (cfg.dpNoiseMult !== undefined && cfg.dpNoiseMult !== null) ? cfg.dpNoiseMult : 0;
-        var sigma2 = dpNoiseMult2 * cfg.dpClipNorm;
-        if (sigma2 > 0) {
-          agg = addGaussianNoise(agg, sigma2);
-          flMetrics.dpPrivacyBudget += 1 / (sigma2 * sigma2);
-        }
-      }
 
       // FedAvg/FedProx server update: w_c += mean(delta)
       var wc = flClusterWeights![c];
@@ -2156,7 +2145,7 @@ function oneStepFL(): void {
             for (var i3 = 0; i3 < layer.length; i3++) {
               var node = layer[i3];
               var gBias = cfg.mu * (node.bias - w0[idx++]);
-              node.accInputDer += gBias;
+              node.accInputDer += gBias; // accInputDer is dE/db
               node.numAccumulatedDers += 1;
             }
             for (var i4 = 0; i4 < layer.length; i4++) {
@@ -2164,7 +2153,7 @@ function oneStepFL(): void {
               for (var j = 0; j < node2.inputLinks.length; j++) {
                 var link = node2.inputLinks[j];
                 var gW = cfg.mu * (link.weight - w0[idx++]);
-                link.accErrorDer += gW;
+                link.accErrorDer += gW; // accErrorDer is dE/dw
                 link.numAccumulatedDers += 1;
               }
             }
@@ -2270,18 +2259,7 @@ function oneStepFL(): void {
   }
   // Aggregate and update server
   var agg = aggregateDeltas(deltas.map(function(d){ return {delta: d.delta, weight: d.weight}; }), !!cfg.weightedAggregation);
-
-  // Server-level DP
-  if (!cfg.dpClientLevel && cfg.dpClipNorm && cfg.dpClipNorm > 0) {
-    agg = clipUpdate(agg, cfg.dpClipNorm);
-    var dpNoiseMult2 = (cfg.dpNoiseMult !== undefined && cfg.dpNoiseMult !== null) ? cfg.dpNoiseMult : 0;
-    var sigma2 = dpNoiseMult2 * cfg.dpClipNorm;
-    if (sigma2 > 0) {
-      agg = addGaussianNoise(agg, sigma2);
-      flMetrics.dpPrivacyBudget += 1 / (sigma2 * sigma2);
-    }
-  }
-
+  
   // Server update
   if (cfg.algo === "FedAdam") {
     if (!flServerAdam) {
