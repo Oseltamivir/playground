@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": ["es5", "es2015", "dom"],
+    "strict": false,
+    "noImplicitAny": false,
+    "declaration": false,
+    "sourceMap": false,
+    "rootDir": "../",
+    "outDir": "./dist",
+    "types": []
+  },
+  "include": [
+    "../src/fl/**/*.ts",
+    "**/*.ts"
+  ]
+}

@@ -16,6 +16,7 @@ export function clipUpdate(delta: Weights, clip: number): Weights {
   });
 }
 
+// Add Gaussian noise to each tensor group, return noisy copy
 export function addGaussianNoise(delta: Weights, std: number): Weights {
   if (!isFinite(std) || std <= 0) return delta;
   return delta.map(w => {

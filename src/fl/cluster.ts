@@ -63,7 +63,7 @@ export function kMeans(
   const N = vectors.length;
 
   // For cosine distance, we work on normalized copies for numerical stability.
-  // Note: cloning either way prevents mutating the input "vectors".
+  // Cloning prevents mutating the input "vectors".
   const data = metric === "cosine" ? vectors.map(clone) : vectors.map(clone);
   if (metric === "cosine") for (const v of data) normalizeInPlace(v);
 
@@ -158,32 +158,6 @@ export function kMeans(
 
   // Return final assignments and centroids.
   return { assignments, centroids };
-}
-
-// Compute the arithmetic mean vector over an array of vectors.
-// Returns a zero-length vector if input list is empty.
-function average(vs: Float32Array[]): Float32Array {
-  // Determine dimensionality from first vector (if any).
-  let d = 0;
-  if (vs.length > 0 && vs[0]) d = vs[0].length;
-
-  // Prepare output vector filled with zeros.
-  const out = new Float32Array(d);
-  if (vs.length === 0) return out;
-
-  // Sum component-wise.
-  for (let i = 0; i < vs.length; i++) {
-    const v = vs[i];
-    for (let j = 0; j < d; j++) {
-      out[j] += v[j];
-    }
-  }
-
-  // Divide by number of vectors to get the mean.
-  for (let j = 0; j < d; j++) {
-    out[j] /= vs.length;
-  }
-  return out;
 }
 
 // Deterministic in-place array shuffle using a simple xorshift32 PRNG.

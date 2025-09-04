@@ -16,7 +16,14 @@
     "build": "npm run prep && npm run build-js && npm run build-css && npm run build-html",
     "watch": "npm run prep && concurrently \"npm run watch-js\" \"npm run watch-css\" \"npm run watch-html\"",
     "serve": "npx serve dist/",
-    "serve-watch": "concurrently \"npx serve dist/\" \"npm run watch\""
+    "serve-watch": "concurrently \"npx serve dist/\" \"npm run watch\"",
+
+    "build-tests": "tsc -p tests/tsconfig.json",
+    "test:adam": "npm run build-tests && node tests/dist/tests/adamtest/index.js",
+    "test:fl":   "npm run build-tests && node tests/dist/tests/algostest/index.js",
+    "test:dp":   "npm run build-tests && node tests/dist/tests/dptest/index.js",
+    "test:cluster": "npm run build-tests && node tests/dist/tests/clustertest/index.js",
+    "test:all": "npm run build-tests && node tests/dist/tests/adamtest/index.js && node tests/dist/tests/algostest/index.js && node tests/dist/tests/dptest/index.js && node tests/dist/tests/clustertest/index.js"
   },
   "devDependencies": {
     "@types/d3": "^3.5.34",

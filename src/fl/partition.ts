@@ -90,7 +90,6 @@ export function makeClientsFromXY(
   balance: number = 1.0,
   seed?: number
 ): ClientData[] {
-  // ---- Seeded RNG (xorshift32) with Math.random fallback ----
   const useSeed = seed !== undefined && seed !== null;
   let rngState = (seed as number) >>> 0;
   let gaussSpare: number | null = null;
@@ -112,7 +111,7 @@ export function makeClientsFromXY(
   }
   function randn(): number {
     if (!useSeed) {
-      // Box–Muller via Math.random
+      // Box–Muller
       const u1 = Math.random() || 1 / 2 ** 32, u2 = Math.random();
       return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
     }
