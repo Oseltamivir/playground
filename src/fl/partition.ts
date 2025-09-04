@@ -282,7 +282,7 @@ export function makeClientsFromXY(
   // ---- (3) Build clients: class mixture comes solely from alpha (IID knob) ----
   for (let cId = 0; cId < numClients; cId++) {
     // draw per-client class proportions from your existing sampler (seeded above)
-    const p = sampleDirichlet(numClasses, alpha); // do NOT smooth with `balance`
+    const p = sampleDirichlet(numClasses, alpha);
     const target = clientSizes[cId];
 
     // Start with reserved one(s)
@@ -305,6 +305,8 @@ export function makeClientsFromXY(
     }
 
     // Build batches
+    // Example: if input = [7, 3, 10, 5, 2], BS = 2,
+    // Output = [7,3], [10,5], [2]
     const batches: { x: number[][]; y: number[] }[] = [];
     for (let b = 0; b < idxs.length; b += batchSize) {
       const sl = idxs.slice(b, b + batchSize);

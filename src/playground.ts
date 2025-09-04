@@ -2692,7 +2692,7 @@ function renderClientAllocation(cfg?: FLConfig, activeClientIds: number[] = []):
   }
 }
 
-// Add helper: update only one client's mini-graph without touching others
+// Helper: update only one client's mini-graph without touching others
 function updateClientCanvas(clientId: number, cfg?: FLConfig): void {
   cfg = cfg || readFLConfig();
   const container = d3.select("#client-allocation");
