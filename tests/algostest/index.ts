@@ -4,6 +4,7 @@ import { test, run, assertArrayClose } from "../_util/harness";
 
 function W(arrs: number[][]): Weights { return arrs.map(a => new Float32Array(a)); }
 
+// Test 1: Simple element-wise difference
 test("diffWeights", () => {
   const a = W([[1, 2], [3]]);
   const b = W([[0, 1], [10]]);
@@ -12,6 +13,7 @@ test("diffWeights", () => {
   assertArrayClose(d[1], new Float32Array([-7]));
 });
 
+// Test 2: Elementwise a + s·b.
 test("addScaled", () => {
   const a = W([[1, 2]]);
   const b = W([[3, -1]]);
@@ -19,11 +21,13 @@ test("addScaled", () => {
   assertArrayClose(out[0], new Float32Array([1 + 0.5 * 3, 2 + 0.5 * -1]));
 });
 
+// Test 3: torch.zeros_like
 test("zerosLike", () => {
   const z = zerosLike(W([[5, 6, 7]]));
   assertArrayClose(z[0], new Float32Array([0, 0, 0]));
 });
 
+// Test 4: Returns a plain average of client deltas
 test("aggregateDeltas unweighted avg", () => {
   const deltas = [
     { delta: W([[1, 2]]), weight: 10 },
@@ -33,6 +37,7 @@ test("aggregateDeltas unweighted avg", () => {
   assertArrayClose(out[0], new Float32Array([2, 3])); // average of rows
 });
 
+// Test 5: Returns a weighted average of client deltas
 test("aggregateDeltas weighted", () => {
   const deltas = [
     { delta: W([[1, 2]]), weight: 1 },
@@ -43,6 +48,7 @@ test("aggregateDeltas weighted", () => {
   assertArrayClose(out[0], new Float32Array([2.5, 3.5]));
 });
 
+// Test 6: Server-side proxy of FedProx: returns delta - (mu/steps)·(w - w0).
 test("applyProximalGradient basic sanity", () => {
   const w  = W([[ 2,  0]]);
   const w0 = W([[ 1, -1]]);

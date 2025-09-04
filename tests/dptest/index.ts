@@ -4,12 +4,13 @@ import { test, run, assertArrayClose } from "../_util/harness";
 
 function W(arrs: number[][]): Weights { return arrs.map(a => new Float32Array(a)); }
 
+// Test 1: clipUpdate
 test("clipUpdate scales to cap", () => {
   const d = W([[3, 4]]); // norm = 5
   const out = clipUpdate(d, 2);
-  const s = 2 / 5;
-  assertArrayClose(out[0], new Float32Array([3 * s, 4 * s]));
+  assertArrayClose(out[0], new Float32Array([1.2, 1.6])); // should scale down to norm 2
 });
+
 
 // Deterministic Box–Muller by patching Math.random to a fixed sequence.
 // dp.ts uses: u=Math.random(), v=Math.random(), n = sqrt(-2 ln u) * cos(2π v).

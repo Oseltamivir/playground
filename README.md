@@ -23,6 +23,13 @@ The changes made include the addition of federated learning (FL) capabilities, a
 
 All modifications are done on top of TensorFlow's work, if "Enable FL" is not checked, the original TensorFlow functionality remains. More info on the controls and visualizations can be found on the playground itself.
 
+
+## Tests
+
+Numerical and functional tests for the new FL functionalities such as ADAM numerical correctness, K-means, Box–Muller and Marsaglia–Tsang, xorshift32 determinism are included in `tests`. These are not meant for CI/CD but for numerical testing and verification.
+
+They can be built with `npm-run build-tests`, then test with `npm run test:all`.
+
 ---
 # Deep playground
 

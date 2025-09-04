@@ -3,6 +3,7 @@ import { test, run, assertClose, assertArrayClose } from "../_util/harness";
 
 function F(a: number[]): Float32Array { return new Float32Array(a); }
 
+// Test 1: Self-explanatory tests for cluster.ts functions
 test("dot / norm / cosineSim / l2Dist2", () => {
   const a = F([1, 2, 3]);
   const b = F([4, 5, 6]);
@@ -17,6 +18,7 @@ test("dot / norm / cosineSim / l2Dist2", () => {
   assertClose(l2Dist2(F([1,2]), F([3,5])), 13);
 });
 
+// Test 2: K-Means on simple datasets
 test("kMeans (L2): two obvious clusters", () => {
   const pts = [F([0,0]), F([0,1]), F([5,5]), F([5,6])];
   const { assignments, centroids } = kMeans(pts, 2, "l2", 50, 42);
@@ -32,6 +34,7 @@ test("kMeans (L2): two obvious clusters", () => {
   }
 });
 
+// Test 3: K-Means on simple datasets with cosine distance
 test("kMeans (cosine): separates directions", () => {
   const pts = [F([1,0]), F([0.99,0.01]), F([0,1]), F([0.01,0.99])];
   const { assignments, centroids } = kMeans(pts, 2, "cosine", 50, 7);

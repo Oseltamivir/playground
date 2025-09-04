@@ -21,10 +21,10 @@ test("Adam: t=1 bias-corrected step equals -lr for constant grad=1", () => {
 });
 
 
-// Test 2: Simple convex quadratic f(w)=0.5 * ||w||^2 with grad = w.
+// Test 2: Simple function f(w)=0.5 * w^2 with grad = w.
 // Adam should drive weights toward 0 (not necessarily monotone every step).
 test("Adam: converges toward 0 on quadratic (grad = w)", () => {
-  const opt = new ServerAdam(0.02, 0.9, 0.999, 1e-8); // slightly larger lr for speed
+  const opt = new ServerAdam(0.02, 0.9, 0.999, 1e-8);
   let w = W([[1, -2, 3]]);
   const initial = Array.from(w[0]);
   const initialNorm2 = initial.reduce((s, x) => s + x * x, 0);
