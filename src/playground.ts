@@ -1761,7 +1761,6 @@ function oneStepFL(): void {
     ensureClusterState(cfg);
 
     var K = flClusterCount;
-    var roundStartTime = performance.now();
 
     // Sample clients - if we were in solo mode, now include all clients for aggregation
     var k = Math.max(1, Math.round((cfg.clientFrac || 0.2) * flClients.length));
@@ -1914,10 +1913,6 @@ function oneStepFL(): void {
       var wc = flClusterWeights![c];
       for (var wi = 0; wi < wc.length; wi++) wc[wi] = wc[wi] + agg[0][wi];
     }
-
-    // Metrics and UI updates
-    var roundEndTime = performance.now();
-    var roundTime = roundEndTime - roundStartTime;
 
     var nFloats = flClusterWeights![0].length;
     var commBytes = (nFloats * 4) * (roundClients.length + K);
