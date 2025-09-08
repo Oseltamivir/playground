@@ -52,6 +52,8 @@ export function shuffle(array: any[]): void {
 
 export type DataGenerator = (numSamples: number, noise: number) => Example2D[];
 
+// Produces a binary classification dataset with two Gaussian clusters,
+// centered at (2,2) labeled +1 and (-2,-2) labeled -1.
 export function classifyTwoGaussData(numSamples: number, noise: number):
     Example2D[] {
   let points: Example2D[] = [];
@@ -72,6 +74,8 @@ export function classifyTwoGaussData(numSamples: number, noise: number):
   return points;
 }
 
+// Generates points uniformly in a square (radius 6) and returns a 
+// continuous label = scaled(x + y) (mapped from [-10,10] to [-1,1])
 export function regressPlane(numSamples: number, noise: number):
   Example2D[] {
   let radius = 6;
@@ -92,6 +96,8 @@ export function regressPlane(numSamples: number, noise: number):
   return points;
 }
 
+// Generates points uniformly in a square and computes 
+// a continuous label determined by several Gaussian “bumps”
 export function regressGaussian(numSamples: number, noise: number):
   Example2D[] {
   let points: Example2D[] = [];
@@ -133,6 +139,7 @@ export function regressGaussian(numSamples: number, noise: number):
   return points;
 }
 
+// Produces two interleaved spirals
 export function classifySpiralData(numSamples: number, noise: number):
     Example2D[] {
   let points: Example2D[] = [];
@@ -153,6 +160,7 @@ export function classifySpiralData(numSamples: number, noise: number):
   return points;
 }
 
+// Produces a binary dataset where positive examples are sampled inside a central circle
 export function classifyCircleData(numSamples: number, noise: number):
     Example2D[] {
   let points: Example2D[] = [];
@@ -187,6 +195,7 @@ export function classifyCircleData(numSamples: number, noise: number):
   return points;
 }
 
+// Produces an XOR-style dataset
 export function classifyXORData(numSamples: number, noise: number):
     Example2D[] {
   function getXORLabel(p: Point) { return p.x * p.y >= 0 ? 1 : -1; }

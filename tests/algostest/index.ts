@@ -1,4 +1,4 @@
-import { diffWeights, addScaled, zerosLike, aggregateDeltas, applyProximalGradient } from "../../src/fl/algorithms";
+import { diffWeights, addScaled, zerosLike, aggregateDeltas} from "../../src/fl/algorithms";
 import { Weights } from "../../src/fl/types";
 import { test, run, assertArrayClose } from "../_util/harness";
 
@@ -48,14 +48,5 @@ test("aggregateDeltas weighted", () => {
   assertArrayClose(out[0], new Float32Array([2.5, 3.5]));
 });
 
-// Test 6: Server-side proxy of FedProx: returns delta - (mu/steps)·(w - w0).
-test("applyProximalGradient basic sanity", () => {
-  const w  = W([[ 2,  0]]);
-  const w0 = W([[ 1, -1]]);
-  const d  = W([[ 0,  0]]);
-  const out = applyProximalGradient(d, w, w0, 0.5, 1);
-  // subtract (mu/steps)*(w - w0) = 0.5*[1, 1]
-  assertArrayClose(out[0], new Float32Array([-0.5, -0.5]));
-});
 
 run();

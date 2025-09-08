@@ -21,13 +21,15 @@ export function sampleDirichlet(k: number, alpha: number): number[] {
     return u > 0 ? u : 1 / 4294967296;    // avoid exact 0 for logs
   }
 
-  // Box–Muller -> N(0,1), with spare reuse
+  // Box–Muller -> N(0,1), for Marsaglia–Tsang
+  // Two independent uniforms into two independent standard normals
   function randn(): number {
     if (self._gaussSpare != null) {
       const z = self._gaussSpare;
       self._gaussSpare = null;
       return z;
     }
+    // Formula from Box–Muller wikipedia
     const u1 = rand(), u2 = rand();
     const r = Math.sqrt(-2.0 * Math.log(u1));
     const theta = 2.0 * Math.PI * u2;
@@ -41,12 +43,11 @@ export function sampleDirichlet(k: number, alpha: number): number[] {
   function gamma1(a: number): number {
     const EPS = 1e-12;
     if (!(a > 0)) a = EPS;
-    if (a < 1) {
-      // Boosting trick: Gamma(a) = Gamma(a+1) * U^(1/a)
+    if (a < 1) { // boosting cause results aren't obvious
       const u = rand();
       return gamma1(a + 1) * Math.pow(u, 1 / a);
     }
-    // Marsaglia–Tsang (2000)
+    // Marsaglia–Tsang (2000) formula in abstract of https://dl.acm.org/doi/pdf/10.1145/358407.358414
     const d = a - 1 / 3;
     const c = 1 / Math.sqrt(9 * d);
     while (true) {

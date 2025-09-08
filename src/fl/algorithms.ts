@@ -43,19 +43,3 @@ export function aggregateDeltas(
   }
   return base;
 }
-
-export function applyProximalGradient(
-  // For FedProx, you account for μ(w - w0) inside local training. This helper is here
-  // in case you choose to implement it as a server-side correction (less faithful).
-  delta: Weights, w: Weights, w0: Weights, mu: number, steps: number
-): Weights {
-  if (!mu || mu <= 0) return delta;
-  const prox = w.map((wi, li) => {
-    const p = new Float32Array(wi.length);
-    const di = w0[li];
-    for (let i=0;i<wi.length;i++) p[i] = mu * (wi[i] - di[i]);
-    return p;
-  });
-  // crude: subtract prox/steps from delta; prefer client-side implementation
-  return addScaled(delta, prox, -1/Math.max(1, steps));
-}

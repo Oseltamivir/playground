@@ -176,3 +176,92 @@ function seededShuffle<T>(arr: T[], seed: number) {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
 }
+
+//
+// Initialize K cluster weight vectors from a base vector.
+export function initClusterWeights(base: Float32Array, K: number, existing?: Float32Array[]|null): Float32Array[] {
+  const out: Float32Array[] = [];
+
+  // If existing weights provided and valid, just clone
+  if (existing && existing.length === K && existing[0] && existing[0].length === base.length) {
+    for (let clientNum = 0; clientNum < K; clientNum++) {
+      const w = new Float32Array(base.length);
+      w.set(existing[clientNum] || base);
+      out.push(w);
+    }
+    return out;
+  }
+  // Otherwise, initialize all to base
+  for (let clientNum = 0; clientNum < K; clientNum++) {
+    const w = new Float32Array(base.length);
+    w.set(base);
+    out.push(w);
+  }
+  return out;
+}
+
+export function averageBySize(clusterWeights: Float32Array[], clientCluster: number[]): Float32Array {
+  if (!clusterWeights) {
+    return new Float32Array(0);
+  }
+  const K = clusterWeights.length;
+  const counts = new Array<number>(K).fill(0);
+
+  // Count clients per cluster
+  for (const c of clientCluster) {
+    if (c >= 0 && c < K) counts[c]++;
+  }
+
+  // Total client count
+  const sum = counts.reduce((acc, cur) => acc + cur, 0);
+  const total = sum === 0 ? 1 : sum;
+
+  const d = clusterWeights[0].length;
+  const out = new Float32Array(d);
+
+  // For each cluster c, add its weight vector scaled by count[c] / total
+  for (let c = 0; c < K; c++) {
+    const w = clusterWeights[c];
+    const wgt = counts[c] / total;
+    for (let i = 0; i < d; i++) out[i] += wgt * w[i];
+  }
+  return out;
+}
+
+//
+// Reassign clients to K clusters using their latest deltas 
+// Returns new assignments and the learned centroids
+export function reclusterAssignments(
+  lastClientDelta: (Float32Array|null)[],
+  currentAssign: number[],
+  K: number,
+  metric: Metric = "cosine",
+  seed = 3407
+): { newAssign: number[]; centroids: Float32Array[] } {
+  // Collect vectors and owners
+  const vectors: Float32Array[] = [];
+  const owners: number[] = [];
+  for (let i = 0; i < lastClientDelta.length; i++) {
+    const v = lastClientDelta[i];
+    if (v) { vectors.push(v); owners.push(i); }
+  }
+
+  // If no deltas: random assignment
+  if (vectors.length === 0) {
+    const rndAssign = currentAssign.slice();
+    for (let i = 0; i < rndAssign.length; i++) rndAssign[i] = Math.floor(Math.random() * K);
+    return { newAssign: rndAssign, centroids: [] };
+  }
+
+  // Otherwise, cluster the deltas with kMeans
+  const { assignments, centroids } = kMeans(vectors, Math.min(K, vectors.length), metric, 20, seed);
+
+  // Get new assignments
+  const newAssign = currentAssign.slice();
+  for (let i = 0; i < owners.length; i++) newAssign[owners[i]] = assignments[i];
+
+  // Duplicate last for NULL delta vectors
+  while (centroids.length < K) centroids.push(centroids[centroids.length - 1]);
+
+  return { newAssign, centroids };
+}

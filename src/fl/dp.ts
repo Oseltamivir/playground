@@ -1,12 +1,16 @@
 import {Weights} from "./types";
 
-// L2 clip each tensor group to given norm, return clipped copy and (optional) noise
+// L2 clip each tensor group to given norm, return clipped copy and noise
+// For robustness, limits updates, improves stability
 export function clipUpdate(delta: Weights, clip: number): Weights {
   if (!isFinite(clip) || clip <= 0) return delta;
   // Compute global L2 of concatenated vectors
   let sq = 0;
+
+  // Norm of vectors
   delta.forEach(w => { for (let i=0;i<w.length;i++) sq += w[i]*w[i]; });
   const norm = Math.sqrt(sq) || 1e-12;
+  
   const scale = Math.min(1, clip / norm);
   if (scale === 1) return delta;
   return delta.map(w => {

@@ -207,6 +207,8 @@ export class HeatMap {
   }
 }  // Close class HeatMap.
 
+// Downsample a square matrix by averaging small square blocks.
+// CNN with zero-overlap stride with meanPool
 export function reduceMatrix(matrix: number[][], factor: number): number[][] {
   if (matrix.length !== matrix[0].length) {
     throw new Error("The provided matrix must be a square matrix");

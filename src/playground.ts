@@ -28,11 +28,11 @@ import {
 import {Example2D, shuffle} from "./dataset";
 import {AppendingLineChart} from "./linechart";
 import {makeClientsFromXY} from "./fl/partition";
-import {aggregateDeltas, addScaled, diffWeights} from "./fl/algorithms";
+import {aggregateDeltas} from "./fl/algorithms";
 import {clipUpdate, addGaussianNoise} from "./fl/dp";
 import {ServerAdam} from "./fl/optimizers";
 import {ClientData, FLConfig, Weights} from "./fl/types";
-import {kMeans, cosineSim, l2Dist2} from "./fl/cluster";
+import {initClusterWeights, averageBySize, reclusterAssignments} from "./fl/cluster";
 import * as d3 from 'd3';
 
 let mainWidth;
@@ -1526,19 +1526,9 @@ function nnSetWeights(w: Weights): void {
 function ensureClusterState(cfg: FLConfig): void {
   const K = Math.max(1, cfg.numClusters || 1);
   const base = nnFlattenWeights();
-  if (!flClusterWeights || flClusterWeights.length !== K || flClusterWeights[0].length !== base.length) {
-    flClusterWeights = [];
-    for (let c = 0; c < K; c++) {
-      const w = new Float32Array(base.length);
-      w.set(base);
-      flClusterWeights.push(w);
-    }
-  }
-  // If the model was just reset (iter === 0), sync cluster weights to the fresh network
+  flClusterWeights = initClusterWeights(base, K, flClusterWeights);
   if (iter === 0 && flClusterWeights) {
-    for (let c = 0; c < flClusterWeights.length; c++) {
-      flClusterWeights[c].set(base);
-    }
+    for (let c = 0; c < flClusterWeights.length; c++) flClusterWeights[c].set(base);
   }
   if (flClientCluster.length !== flClients.length) {
     var a = new Array(flClients.length);
@@ -1555,87 +1545,17 @@ function ensureClusterState(cfg: FLConfig): void {
 
 function averageClusterWeightsBySize(): Float32Array {
   if (!flClusterWeights) return nnFlattenWeights();
-
-  const K = flClusterWeights.length;
-  const counts = new Array<number>(K).fill(0);
-
-  for (const c of flClientCluster) {
-    if (c >= 0 && c < K) counts[c]++;
-  }
-  const total = counts.reduce((a, b) => a + b, 0) || 1;
-
-  const d = flClusterWeights[0].length;
-  const out = new Float32Array(d);
-  for (let c = 0; c < K; c++) {
-    const w = flClusterWeights[c];
-    const wgt = counts[c] / total;
-    for (let i = 0; i < d; i++) out[i] += wgt * w[i];
-  }
-  return out;
+  return averageBySize(flClusterWeights, flClientCluster);
 }
 
 function reclusterIfNeeded(cfg: FLConfig): void {
   if (!cfg.clusteringEnabled || (cfg.numClusters || 1) <= 1) return;
-  
-  // Allow initial clustering even if locked (when no deltas exist yet)
-  const hasAnyDeltas = flLastClientDelta.some(d => d !== null);
-  // if (flAllocationLocked && hasAnyDeltas)   
   if (flRoundsSinceCluster < (cfg.reclusterEvery || 5)) return;
   if ((iter + 1) < (cfg.warmupRounds || 0)) return;
 
   const K = Math.max(1, cfg.numClusters || 1);
-  // Collect available deltas
-  const vectors: Float32Array[] = [];
-  const owners: number[] = [];
-  for (let i = 0; i < flLastClientDelta.length; i++) {
-    const v = flLastClientDelta[i];
-    if (v) {
-      vectors.push(v);
-      owners.push(i);
-    }
-  }
-  
-  // If no deltas yet, do random initial assignment
-  if (vectors.length === 0) { 
-    for (let i = 0; i < flClientCluster.length; i++) {
-      flClientCluster[i] = Math.floor(Math.random() * K);
-    }
-    flRoundsSinceCluster = 0; 
-    return; 
-  }
-
-  const {assignments, centroids} = kMeans(vectors, Math.min(K, vectors.length), (cfg.similarityMetric || "cosine") as any, 20, 42);
-
-  // Build full assignment: use k-means for owners; others keep nearest centroid if they have delta, else keep prior.
-  const newAssign = flClientCluster.slice();
-  for (let i = 0; i < owners.length; i++) {
-    newAssign[owners[i]] = assignments[i];
-  }
-  // If kMeans returned fewer centroids (vectors < K), extend by duplicating nearest
-  while (centroids.length < K) centroids.push(centroids[centroids.length - 1]);
- 
-  for (let i = 0; i < newAssign.length; i++) {
-    if (owners.indexOf(i) !== -1) continue;
-    const v = flLastClientDelta[i];
-    if (!v) continue;
-    // Assign to nearest centroid by selected metric
-    let best = 0;
-    let bestScore = Number.POSITIVE_INFINITY;
-    for (let c = 0; c < K; c++) {
-      let score: number;
-      if ((cfg.similarityMetric || "cosine") === "cosine") {
-        // distance = 1 - cosine
-        const sim = cosineSim(v, centroids[c]);
-        score = 1 - sim;
-      } else {
-        score = l2Dist2(v, centroids[c]);
-      }
-      if (score < bestScore) { bestScore = score; best = c; }
-    }
-    newAssign[i] = best;
-  }
-
-  flClientCluster = newAssign;
+  const res = reclusterAssignments(flLastClientDelta, flClientCluster.slice(), K, (cfg.similarityMetric || "cosine") as any, 3407);
+  flClientCluster = res.newAssign;
   flRoundsSinceCluster = 0;
 }
 
@@ -2258,7 +2178,7 @@ function oneStepFL(): void {
     flSoloPendingClientId = null;
   }
   // Aggregate and update server
-  var agg = aggregateDeltas(deltas.map(function(d){ return {delta: d.delta, weight: d.weight}; }), !!cfg.weightedAggregation);
+  var agg = aggregateDeltas(deltas.map(function(d){ return {delta: d.delta, weight: d.weight}; }), !!cfg.weightedAggregation); //!TODO: Weighted Aggregation option
   
   // Server update
   if (cfg.algo === "FedAdam") {
