@@ -1742,7 +1742,6 @@ function oneStepSoloTraining(): void {
 
 
 //============= Start of oneStepFL =============//
-
 function oneStepFL(): void {
   var cfg = readFLConfig();
   if (flLastAlgo !== cfg.algo) { 
@@ -1753,33 +1752,36 @@ function oneStepFL(): void {
   }
 
   rebuildFLClientsIfNeeded(cfg);
-
   var clustered = !!cfg.clusteringEnabled && (cfg.numClusters || 1) > 1 && (cfg.algo === "FedAvg" || cfg.algo === "FedProx");
   refreshFLDisclaimer();
-  // Clustered FL path (FedAvg/FedProx only)
+  
+  // Sample clients
+  // We first use clientFrac to determine how many clients to select
+  var k = Math.max(1, Math.round((cfg.clientFrac || 0.2) * flClients.length));
+  var shuffled = flClients.slice(0);
+  shuffled.sort(function(){ return Math.random() - 0.5; });
+  var dropout = (cfg.clientDropout !== undefined && cfg.clientDropout !== null) ? cfg.clientDropout : 0;
+
+  var roundClients: ClientData[] = [];
+  var selectedClients = 0;
+
+  // Then we apply clientDropout to simulate random dropouts
+  for (var i = 0; i < k && i < shuffled.length; i++) {
+    selectedClients++;
+    if (Math.random() > dropout) roundClients.push(shuffled[i]);
+  }
+
+  // Finally ensure at least one client is selected
+  if (roundClients.length === 0 && shuffled.length > 0) roundClients.push(shuffled[0]);
+
+  var participationRate = roundClients.length / Math.max(1, selectedClients);
+  var clientParticipationRate = selectedClients / Math.max(1, flClients.length);
+
+  // Clustered FL path
   if (clustered) {
     ensureClusterState(cfg);
 
     var K = flClusterCount;
-
-    // Sample clients - if we were in solo mode, now include all clients for aggregation
-    var k = Math.max(1, Math.round((cfg.clientFrac || 0.2) * flClients.length));
-    var shuffled = flClients.slice(0);
-    shuffled.sort(function(){ return Math.random() - 0.5; });
-    var dropout = (cfg.clientDropout !== undefined && cfg.clientDropout !== null) ? cfg.clientDropout : 0;
-
-    var roundClients: ClientData[] = [];
-    var selectedClients = 0;
-
-    // Don't limit to solo client when stepping - include all selected clients
-    for (var i = 0; i < k && i < shuffled.length; i++) {
-      selectedClients++;
-      if (Math.random() > dropout) roundClients.push(shuffled[i]);
-    }
-    if (roundClients.length === 0 && shuffled.length > 0) roundClients.push(shuffled[0]);
-
-    var participationRate = roundClients.length / Math.max(1, selectedClients);
-    var clientParticipationRate = selectedClients / Math.max(1, flClients.length);
 
     // Per-cluster delta buckets
     var perCluster: {delta: Weights; weight: number; clientLoss: number}[][] = [];
@@ -1877,10 +1879,8 @@ function oneStepFL(): void {
         if (sigma > 0) {
           delta = addGaussianNoise(delta, sigma);
           flMetrics.dpPrivacyBudget += 1 / (sigma * sigma);
-        }
-        
+        } 
       }
-
 
       perCluster[cid].push({delta: delta, weight: client.size, clientLoss: clientEndLoss});
       flLastClientDelta[clientIdx] = delta[0];
@@ -1907,6 +1907,7 @@ function oneStepFL(): void {
       var deltasC = perCluster[c];
       if (deltasC.length === 0) continue;
 
+      // Gives an aggregated delta
       var agg = aggregateDeltas(deltasC.map(function(d){ return {delta: d.delta, weight: d.weight}; }), !!cfg.weightedAggregation);
 
       // FedAvg/FedProx server update: w_c += mean(delta)
@@ -1915,6 +1916,7 @@ function oneStepFL(): void {
     }
 
     var nFloats = flClusterWeights![0].length;
+    // 4 bytes per float, K model downloads, one upload per K
     var commBytes = (nFloats * 4) * (roundClients.length + K);
 
     flMetrics.participationRates.push([clientParticipationRate, participationRate]);
@@ -1944,6 +1946,7 @@ function oneStepFL(): void {
       if (n < 1024*1024*1024) return (n/1024/1024).toFixed(1) + " MB";
       return (n/1024/1024/1024).toFixed(2) + " GB";
     };
+
     var setTxt = function(id:string, v:string){ var el = document.getElementById(id); if (el) el.textContent = v; };
     setTxt("fl-round", String(iter + 1));
     setTxt("fl-participating", String(roundClients.length));
@@ -1974,7 +1977,6 @@ function oneStepFL(): void {
   // -------- Single-model path (FedAvg, FedProx, SCAFFOLD, FedAdam) --------
   // Global weights at round start
   var w0 = nnCloneWeights()[0];
-  var roundStartTime = performance.now();
 
   // SCAFFOLD: initialize control variates if needed
   if (cfg.algo === "SCAFFOLD") {
@@ -1988,25 +1990,6 @@ function oneStepFL(): void {
       }
     }
   }
-
-  // Sample clients - don't limit to solo client when stepping
-  var k = Math.max(1, Math.round(cfg.clientFrac * flClients.length));
-  var shuffled = flClients.slice(0);
-  shuffled.sort(function(){ return Math.random() - 0.5; });
-  var dropout = (cfg.clientDropout !== undefined && cfg.clientDropout !== null) ? cfg.clientDropout : 0;
-
-  var roundClients: ClientData[] = [];
-  var selectedClients = 0;
-
-  // Include all selected clients for proper aggregation
-  for (var i = 0; i < k && i < shuffled.length; i++) {
-    selectedClients++;
-    if (Math.random() > dropout) roundClients.push(shuffled[i]);
-  }
-  if (roundClients.length === 0 && shuffled.length > 0) roundClients.push(shuffled[0]);
-
-  var participationRate = roundClients.length / selectedClients;
-  var clientParticipationRate = selectedClients / flClients.length;
 
   var clientLossValues: number[] = [];
   var deltas: {delta: Weights; weight: number; clientLoss: number}[] = [];
@@ -2203,8 +2186,6 @@ function oneStepFL(): void {
   }
 
   // Metrics
-  var roundEndTime = performance.now();
-  var roundTime = roundEndTime - roundStartTime;
   var nFloats = w0.length;
   var commBytes = (nFloats * 4) * (roundClients.length + 1);
 
